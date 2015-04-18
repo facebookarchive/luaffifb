@@ -2189,6 +2189,49 @@ int ffi_cdef(lua_State* L)
  * precedence and above. calculate_constant1 is the highest precedence
  */
 
+static int64_t string_to_int(const char* str, size_t size)
+{
+    const char* end = str + size;
+    char c = *str++;
+    if (str < end)
+    {
+        if (c == '\\') {
+            c = *str++;
+            switch (c) {
+            case '\'': c = '\''; break;
+            case '\"': c = '\"'; break;
+            case '\?': c = '\?'; break;
+            case '\\': c = '\\'; break;
+            case 'a': c = '\a'; break;
+            case 'b': c = '\b'; break;
+            case 'f': c = '\f'; break;
+            case 'n': c = '\n'; break;
+            case 'r': c = '\r'; break;
+            case 't': c = '\t'; break;
+            case 'v': c = '\v'; break;
+            case 'e': c = 27; break;
+            case 'x':
+                c = 0;
+                while (str < end) {
+                    char d = *str++;
+                    c *= 16;
+                    if (d >= '0' && d <= '9') c += (d - '0');
+                    else c += (d - 'a' + 10);
+                }
+                break;
+            default:
+                c = c - '0';
+                while (str < end) {
+                    char d = *str++;
+                    c = c*8 + (d - '0');
+                }
+                break;
+            }
+        }
+    }
+    return c;
+}
+
 static int try_cast(lua_State* L)
 {
     struct parser* P = (struct parser*) lua_touserdata(L, 1);
@@ -2204,7 +2247,7 @@ static int try_cast(lua_State* L)
         return luaL_error(L, "invalid cast");
     }
 
-    if (ct.pointers || ct.type != INT32_TYPE) {
+    if (ct.pointers/* || ct.type != INT32_TYPE*/) {
         return luaL_error(L, "unsupported cast on line %d", P->line);
     }
 
@@ -2260,6 +2303,12 @@ static int64_t calculate_constant1(lua_State* L, struct parser* P, struct token*
         if (tok->type != TOK_CLOSE_PAREN) {
             luaL_error(L, "error whilst parsing constant at line %d", P->line);
         }
+
+        next_token(L, P, tok);
+        return ret;
+
+    } else if (tok->type == TOK_STRING) {
+        ret = string_to_int(tok->str, tok->size);
 
         next_token(L, P, tok);
         return ret;
