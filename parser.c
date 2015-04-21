@@ -2155,7 +2155,9 @@ static int parse_root(lua_State* L, struct parser* P)
 
                 lua_pop(L, 1);
 
-                require_token(L, P, &tok);
+                if (!next_token(L, P, &tok)) {
+                    break;
+                }
 
                 if (tok.type == TOK_SEMICOLON) {
                     break;
