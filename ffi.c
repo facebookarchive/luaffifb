@@ -133,31 +133,31 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
 }
 
 #define TO_NUMBER(TYPE, ALLOW_POINTERS)                                     \
-    TYPE real = 0, imag = 0;                                                \
+    TYPE ret = 0;                                                           \
     void* p;                                                                \
     struct ctype ct;                                                        \
                                                                             \
     switch (lua_type(L, idx)) {                                             \
     case LUA_TBOOLEAN:                                                      \
-        real = (TYPE) lua_toboolean(L, idx);                                \
+        ret = (TYPE) lua_toboolean(L, idx);                                 \
         break;                                                              \
                                                                             \
     case LUA_TNUMBER:                                                       \
-        real = (TYPE) lua_tonumber(L, idx);                                 \
+        ret = (TYPE) lua_tonumber(L, idx);                                  \
         break;                                                              \
                                                                             \
     case LUA_TSTRING:                                                       \
         if (!ALLOW_POINTERS) {                                              \
             type_error(L, idx, #TYPE, 0, NULL);                             \
         }                                                                   \
-        real = (TYPE) (intptr_t) lua_tostring(L, idx);                      \
+        ret = (TYPE) (intptr_t) lua_tostring(L, idx);                       \
         break;                                                              \
                                                                             \
     case LUA_TLIGHTUSERDATA:                                                \
         if (!ALLOW_POINTERS) {                                              \
             type_error(L, idx, #TYPE, 0, NULL);                             \
         }                                                                   \
-        real = (TYPE) (intptr_t) lua_topointer(L, idx);                     \
+        ret = (TYPE) (intptr_t) lua_topointer(L, idx);                      \
         break;                                                              \
                                                                             \
     case LUA_TUSERDATA:                                                     \
@@ -167,30 +167,28 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
             if (!ALLOW_POINTERS) {                                          \
                 type_error(L, idx, #TYPE, 0, NULL);                         \
             }                                                               \
-            real = (TYPE) (intptr_t) p;                                     \
+            ret = (TYPE) (intptr_t) p;                                      \
         } else if (ct.pointers || ct.type == STRUCT_TYPE || ct.type == UNION_TYPE) {\
             if (!ALLOW_POINTERS) {                                          \
                 type_error(L, idx, #TYPE, 0, NULL);                         \
             }                                                               \
-            real = (TYPE) (intptr_t) p;                                     \
+            ret = (TYPE) (intptr_t) p;                                      \
         } else if (ct.type == COMPLEX_DOUBLE_TYPE) {                        \
-            real = (TYPE) creal(*(complex_double*) p);                      \
-            imag = (TYPE) cimag(*(complex_double*) p);                      \
+            ret = (TYPE) creal(*(complex_double*) p);                       \
         } else if (ct.type == COMPLEX_FLOAT_TYPE) {                         \
-            real = (TYPE) crealf(*(complex_float*) p);                      \
-            imag = (TYPE) cimagf(*(complex_float*) p);                      \
+            ret = (TYPE) crealf(*(complex_float*) p);                       \
         } else if (ct.type == DOUBLE_TYPE) {                                \
-            real = (TYPE) *(double*) p;                                     \
+            ret = (TYPE) *(double*) p;                                      \
         } else if (ct.type == FLOAT_TYPE) {                                 \
-            real = (TYPE) *(float*) p;                                      \
+            ret = (TYPE) *(float*) p;                                       \
         } else {                                                            \
-            real = check_intptr(L, idx, p, &ct);                            \
+            ret = check_intptr(L, idx, p, &ct);                             \
         }                                                                   \
         lua_pop(L, 1);                                                      \
         break;                                                              \
                                                                             \
     case LUA_TNIL:                                                          \
-        real = (TYPE) 0;                                                    \
+        ret = (TYPE) 0;                                                     \
         break;                                                              \
                                                                             \
     default:                                                                \
@@ -198,10 +196,10 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
     }                                                                       \
 
 static int64_t cast_int64(lua_State* L, int idx, int is_cast)
-{ TO_NUMBER(int64_t, is_cast); (void) imag; return real; }
+{ TO_NUMBER(int64_t, is_cast); return ret; }
 
 static uint64_t cast_uint64(lua_State* L, int idx, int is_cast)
-{ TO_NUMBER(uint64_t, is_cast); (void) imag; return real; }
+{ TO_NUMBER(uint64_t, is_cast); return ret; }
 
 int32_t check_int32(lua_State* L, int idx)
 { return (int32_t) cast_int64(L, idx, 0); }
@@ -215,47 +213,68 @@ int64_t check_int64(lua_State* L, int idx)
 uint64_t check_uint64(lua_State* L, int idx)
 { return cast_uint64(L, idx, 0); }
 
-static void do_check_double(lua_State* L, int idx, double* preal, double* pimag)
-{
-    TO_NUMBER(double, 0);
-    if (preal) *preal = real;
-    if (pimag) *pimag = imag;
-}
-
 double check_double(lua_State* L, int idx)
-{ double ret; do_check_double(L, idx, &ret, NULL); return ret; }
+{ TO_NUMBER(double, 0); return ret; }
 
 float check_float(lua_State* L, int idx)
-{ double ret; do_check_double(L, idx, &ret, NULL); return ret; }
+{ TO_NUMBER(double, 0); return ret; }
 
 uintptr_t check_uintptr(lua_State* L, int idx)
-{ TO_NUMBER(uintptr_t, 1); (void) imag; return real; }
+{ TO_NUMBER(uintptr_t, 1); return ret; }
 
-#ifdef HAVE_COMPLEX
-complex_double check_complex_double(lua_State* L, int idx)
-{ double real, imag; do_check_double(L, idx, &real, &imag); return real + imag * 1i; }
-
-complex_float check_complex_float(lua_State* L, int idx)
-{ double real, imag; do_check_double(L, idx, &real, &imag); return real + imag * 1i; }
-
-#else
 complex_double check_complex_double(lua_State* L, int idx)
 {
-    complex_double c;
-    do_check_double(L, idx, &c.real, &c.imag);
-    return c;
+    double real = 0, imag = 0;
+    void* p;
+    struct ctype ct;
+
+    switch (lua_type(L, idx)) {
+    case LUA_TNUMBER:
+        real = (double) lua_tonumber(L, idx);
+        break;
+    case LUA_TTABLE:
+        lua_rawgeti(L, idx, 1);
+        real = check_double(L, -1);
+        lua_pop(L, 1);
+
+        lua_rawgeti(L, idx, 2);
+        if (lua_isnil(L, -1)) {
+            imag = real;
+        }  else {
+            imag = check_double(L, -1);
+        }
+        lua_pop(L, 1);
+        break;
+    case LUA_TUSERDATA:
+        p = to_cdata(L, idx, &ct);
+        if (ct.type == COMPLEX_DOUBLE_TYPE) {
+            real = creal(*(complex_double*) p);
+            imag = cimag(*(complex_double*) p);
+        } else if (ct.type == COMPLEX_FLOAT_TYPE) {
+            real = crealf(*(complex_float*) p);
+            imag = cimagf(*(complex_float*) p);
+        } else if (ct.type == DOUBLE_TYPE) {
+            real = *(double*) p;
+        } else if (ct.type == FLOAT_TYPE) {
+            real = *(float*) p;
+        } else {
+            real = check_intptr(L, idx, p, &ct);
+        }
+        lua_pop(L, 1);
+        break;
+
+    default:
+        type_error(L, idx, "complex", 0, NULL);
+    }
+
+    return mk_complex_double(real, imag);
 }
 
 complex_float check_complex_float(lua_State* L, int idx)
 {
-    complex_double d;
-    complex_float f;
-    do_check_double(L, idx, &d.real, &d.imag);
-    f.real = d.real;
-    f.imag = d.imag;
-    return f;
+    complex_double d = check_complex_double(L, idx);
+    return mk_complex_float(creal(d), cimag(d));
 }
-#endif
 
 static size_t unpack_vararg(lua_State* L, int i, char* to)
 {
@@ -2374,22 +2393,14 @@ static int cdata_tostring(lua_State* L)
     case COMPLEX_DOUBLE_TYPE:
         {
             complex_double c = *(complex_double*) p;
-            if (cimag(c) != 0) {
-                lua_pushfstring(L, "%f+%fi", creal(c), cimag(c));
-            } else {
-                lua_pushfstring(L, "%f", creal(c));
-            }
+            lua_pushfstring(L, "%f+%fi", creal(c), cimag(c));
         }
         return 1;
 
     case COMPLEX_FLOAT_TYPE:
         {
             complex_float c = *(complex_float*) p;
-            if (cimagf(c) != 0) {
-                lua_pushfstring(L, "%f+%fi", crealf(c), cimagf(c));
-            } else {
-                lua_pushfstring(L, "%f", crealf(c));
-            }
+            lua_pushfstring(L, "%f+%fi", crealf(c), cimagf(c));
         }
         return 1;
 
