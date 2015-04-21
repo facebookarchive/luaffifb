@@ -177,8 +177,13 @@ static char* luaL_prepbuffsize(luaL_Buffer* B, size_t sz) {
 #   define EnableWrite(data, size) do {DWORD old; VirtualProtect(data, size, PAGE_READWRITE, &old);} while (0)
 
 #else
+#ifdef OS_OSX
+#   define LIB_FORMAT_1 "%s.dylib"
+#   define LIB_FORMAT_2 "lib%s.dylib"
+#else
 #   define LIB_FORMAT_1 "%s.so"
 #   define LIB_FORMAT_2 "lib%s.so"
+#endif
 #   define LoadLibraryA(name) dlopen(name, RTLD_LAZY | RTLD_GLOBAL)
 #   define GetProcAddressA(lib, name) dlsym(lib, name)
 #   define AllocPage(size) mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0)

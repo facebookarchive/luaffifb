@@ -10,6 +10,11 @@ CFLAGS=-fPIC -g -Wall -Werror $(LUA_CFLAGS) -fvisibility=hidden -Wno-unused-func
 
 MODNAME=ffi
 MODSO=$(MODNAME).so
+ifeq (Darwin, $(shell uname -s))
+	TESTSO=libtest_cdecl.dylib
+else
+	TESTSO=libtest_cdecl.so
+endif
 
 all:
 	if [ `uname` = "Darwin" ]; then $(MAKE) macosx; else $(MAKE) posix; fi
@@ -23,10 +28,10 @@ macosx:
 test_macosx:
 	$(MAKE) test_posix "SOCC=MACOSX_DEPLOYMENT_TARGET=10.3 $(CC) -dynamiclib -single_module -undefined dynamic_lookup $(SOCFLAGS)"
 
-posix: $(MODSO) test_cdecl.so
+posix: $(MODSO) $(TESTSO)
 
 clean:
-	rm -f *.o *.so call_*.h
+	rm -f *.o *.so call_*.h *.dylib
 
 call_x86.h: call_x86.dasc dynasm/*.lua
 	$(LUA) dynasm/dynasm.lua -LN -o $@ $<
@@ -43,10 +48,10 @@ call_x64win.h: call_x86.dasc dynasm/*.lua
 $(MODSO): ffi.o ctype.o parser.o call.o
 	$(SOCC) $^ -o $@
 
-test_cdecl.so: test.o
+$(TESTSO): test.o
 	$(SOCC) $^ -o $@
 
-test_posix: test_cdecl.so $(MODSO)
+test_posix: $(TESTSO) $(MODSO)
 	LD_LIBRARY_PATH=./ $(LUA) test.lua
 
 
