@@ -561,6 +561,10 @@ void* check_typed_pointer(lua_State* L, int idx, int to_usr, const struct ctype*
         /* any pointer can convert to void* */
         goto suc;
 
+    } else if (is_void_ptr(&ft) && ft.pointers == 1) {
+        /* void* can convert to any pointer */
+        goto suc;
+
     } else if (ft.is_null) {
         /* NULL can convert to any pointer */
         goto suc;
