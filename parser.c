@@ -210,10 +210,12 @@ end:
     return 1;
 }
 
-static void require_token(lua_State* L, struct parser* P, struct token* tok)
+#define require_token(L, P, tok) require_token_line(L, P, tok, __FILE__, __LINE__)
+
+static void require_token_line(lua_State* L, struct parser* P, struct token* tok, const char* file, int line)
 {
     if (!next_token(L, P, tok)) {
-        luaL_error(L, "unexpected end");
+        luaL_error(L, "unexpected end on line %s:%d", file, line);
     }
 }
 
