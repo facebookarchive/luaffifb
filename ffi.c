@@ -1473,7 +1473,7 @@ static int ffi_metatype(lua_State* L)
  * the stack, otherwise it returns 0 and pushes nothing */
 int push_user_mt(lua_State* L, int ct_usr, const struct ctype* ct)
 {
-    if (ct->type != STRUCT_TYPE && ct->type != UNION_TYPE) {
+    if (ct->type != STRUCT_TYPE && ct->type != UNION_TYPE && !IS_COMPLEX(ct->type)) {
         return 0;
     }
 
@@ -3019,10 +3019,16 @@ static void push_builtin(lua_State* L, struct ctype* ct, const char* name, int t
     ct->is_defined = 1;
     ct->is_unsigned = is_unsigned;
 
+    if (IS_COMPLEX(type)) {
+        lua_newtable(L);
+    } else {
+        lua_pushnil(L);
+    }
+
     push_upval(L, &types_key);
-    push_ctype(L, 0, ct);
+    push_ctype(L, -2, ct);
     lua_setfield(L, -2, name);
-    lua_pop(L, 1); /* types */
+    lua_pop(L, 2); /* types, usr table */
 }
 
 static void push_builtin_undef(lua_State* L, struct ctype* ct, const char* name, int type)
