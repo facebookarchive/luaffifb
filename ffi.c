@@ -1059,13 +1059,38 @@ static void get_variable_array_size(lua_State* L, int idx, struct ctype* ct)
     }
 }
 
-static int try_set_value(lua_State* L)
+static int is_scalar(struct ctype* ct)
 {
-    void* p = lua_touserdata(L, 2);
-    struct ctype* ct = (struct ctype*) lua_touserdata(L, 4);
-    int check_ptrs = lua_toboolean(L, 5);
-    set_value(L, 1, p, 3, ct, check_ptrs);
-    return 0;
+    int type = ct->type;
+    if (ct->pointers) {
+        return !ct->is_array;
+    }
+    return type != STRUCT_TYPE && type != UNION_TYPE && !IS_COMPLEX(type);
+}
+
+static int should_pack(lua_State *L, int ct_usr, struct ctype* ct, int idx)
+{
+    struct ctype argt;
+    ct_usr = lua_absindex(L, ct_usr);
+
+    if (IS_COMPLEX(ct->type)) {
+        return 0;
+    }
+
+    switch (lua_type(L, idx)) {
+    case LUA_TTABLE:
+        return 0;
+    case LUA_TSTRING:
+        return ct->type == STRUCT_TYPE;
+    case LUA_TUSERDATA:
+        // don't pack if the argument is a cdata with the same type
+        to_cdata(L, idx, &argt);
+        int same = is_same_type(L, ct_usr, -1, ct, &argt);
+        lua_pop(L, 1);
+        return !same;
+    default:
+        return 1;
+    }
 }
 
 static int do_new(lua_State* L, int is_cast)
@@ -1124,37 +1149,24 @@ static int do_new(lua_State* L, int is_cast)
         return 1;
     }
 
-    if (cargs == 1) {
-        /* try packed form first
-         * packed: ffi.new('int[3]', {1})
-         * unpacked: ffi.new('int[3]', 1)
-         */
-        lua_pushcfunction(L, &try_set_value);
-        lua_pushvalue(L, 2); /* ctor arg */
-        lua_pushlightuserdata(L, p);
-        lua_pushvalue(L, -5); /* ctype usr */
-        lua_pushlightuserdata(L, &ct);
-        lua_pushboolean(L, check_ptrs);
+    int scalar = is_scalar(&ct);
+    if (scalar && cargs > 1) {
+        return luaL_error(L, "too many initializers");
+    }
 
-        if (!lua_pcall(L, 5, 0, 0)) {
-            return 1;
+    if (cargs > 1 || (!scalar && should_pack(L, -2, &ct, 2))) {
+        lua_createtable(L, cargs, 0);
+        lua_replace(L, 1);
+        for (i = 1; i <= cargs; i++) {
+            lua_pushvalue(L, i + 1);
+            lua_rawseti(L, 1, i);
         }
-
-        /* remove any errors */
-        lua_settop(L, 4);
+        assert(lua_gettop(L) == cargs + 3);
+        set_value(L, 1, p, -2, &ct, check_ptrs);
+        return 1;
     }
 
-    /* if we have more than 2 ctor arguments then they must be unpacked, e.g.
-     * ffi.new('int[3]', 1, 2, 3) */
-    lua_createtable(L, cargs, 0);
-    lua_replace(L, 1);
-    for (i = 1; i <= cargs; i++) {
-        lua_pushvalue(L, i + 1);
-        lua_rawseti(L, 1, i);
-    }
-    assert(lua_gettop(L) == cargs + 3);
-    set_value(L, 1, p, -2, &ct, check_ptrs);
-
+    set_value(L, 2, p, -2, &ct, check_ptrs);
     return 1;
 }
 
