@@ -1367,7 +1367,7 @@ static void append_type_name(luaL_Buffer* B, int usr, const struct ctype* ct, en
 
     if (type == BOTH || type == BACK) {
         if (ct->is_reference) {
-            luaL_addstring(B, "(&)");
+            luaL_addstring(B, " &");
         }
 
         if (ct->is_variable_array && !ct->variable_size_known) {
@@ -1662,7 +1662,7 @@ static struct ctype* parse_argument2(lua_State* L, struct parser* P, int ct_usr,
             }
 
         } else if (tok.type == TOK_REFERENCE) {
-            luaL_error(L, "NYI: c++ reference types");
+            ct->is_reference = 1;
 
         } else if (parse_attribute(L, P, &tok, ct, asmname)) {
             /* parse attribute has filled out appropriate fields in type */

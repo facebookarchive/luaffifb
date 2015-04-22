@@ -2381,7 +2381,7 @@ static int cdata_tostring(lua_State* L)
         return ret;
     }
 
-    if (ct.pointers > 0 || ct.type == STRUCT_TYPE || ct.type == UNION_TYPE) {
+    if (ct.pointers > 0 || ct.is_reference || ct.type == STRUCT_TYPE || ct.type == UNION_TYPE) {
         push_type_name(L, -1, &ct);
         lua_pushfstring(L, "cdata<%s>: %p", lua_tostring(L, -1), p);
 

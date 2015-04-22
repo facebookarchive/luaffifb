@@ -94,7 +94,7 @@ function_t push_callback(struct jit* jit, lua_State* L, int fidx, int ct_usr, co
         lua_rawgeti(L, ct_usr, i);
         mt = (const struct ctype*) lua_touserdata(L, -1);
 
-        if (mt->pointers) {
+        if (mt->pointers || mt->is_reference) {
             lua_getuservalue(L, -1);
             lua_rawseti(L, -3, ++num_upvals); /* usr value */
             lua_rawseti(L, -2, ++num_upvals); /* mt */
@@ -211,11 +211,11 @@ function_t push_callback(struct jit* jit, lua_State* L, int fidx, int ct_usr, co
     mt = (const struct ctype*) lua_touserdata(L, -1);
 
     | mov r3, #0
-    | mov r2, #((mt->pointers || mt->type != VOID_TYPE) ? 1 : 0)
+    | mov r2, #((mt->pointers || mt->is_reference || mt->type != VOID_TYPE) ? 1 : 0)
     | mov r1, #nargs
     | lcall extern lua_callk
 
-    if (mt->pointers) {
+    if (mt->pointers || mt->is_reference) {
         lua_getuservalue(L, -1);
         lua_rawseti(L, -3, ++num_upvals); /* usr value */
         lua_rawseti(L, -2, ++num_upvals); /* mt */
@@ -393,7 +393,7 @@ void push_function(struct jit* jit, lua_State* L, function_t func, int ct_usr, c
         lua_rawgeti(L, ct_usr, i);
         mt = (const struct ctype*) lua_touserdata(L, -1);
 
-        if (mt->pointers || mt->type == FUNCTION_PTR_TYPE || mt->type == ENUM_TYPE) {
+        if (mt->pointers || mt->is_reference || mt->type == FUNCTION_PTR_TYPE || mt->type == ENUM_TYPE) {
             lua_getuservalue(L, -1);
             num_upvals += 2;
 
@@ -405,7 +405,7 @@ void push_function(struct jit* jit, lua_State* L, function_t func, int ct_usr, c
             | mov r1, #i
             | mov r0, L_ARG
 
-            if (mt->pointers) {
+            if (mt->pointers || mt->is_reference) {
                 | bl extern to_typed_pointer
             } else if (mt->type == FUNCTION_PTR_TYPE) {
                 | bl extern to_typed_function
@@ -518,7 +518,7 @@ void push_function(struct jit* jit, lua_State* L, function_t func, int ct_usr, c
     lua_rawgeti(L, ct_usr, 0);
     mt = (const struct ctype*) lua_touserdata(L, -1);
 
-    if (mt->pointers) {
+    if (mt->pointers || mt->is_reference) {
         lua_getuservalue(L, -1);
         num_upvals += 2;
         | mov DATA, r0

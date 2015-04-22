@@ -244,7 +244,6 @@ void* to_cdata(lua_State* L, int idx, struct ctype* ct)
     lua_getuservalue(L, idx);
 
     if (ct->is_reference) {
-        ct->is_reference = 0;
         return *(void**) (cd+1);
 
     } else if (ct->pointers && !ct->is_array) {

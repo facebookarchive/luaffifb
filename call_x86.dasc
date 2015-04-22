@@ -367,7 +367,7 @@ int x86_return_size(lua_State* L, int usr, const struct ctype* ct)
             lua_rawgeti(L, usr, (int) i);
             mt = (const struct ctype*) lua_touserdata(L, -1);
 
-            if (mt->pointers) {
+            if (mt->pointers || mt->is_reference) {
                 ret += sizeof(void*);
             } else {
                 switch (mt->type) {
@@ -405,7 +405,7 @@ int x86_return_size(lua_State* L, int usr, const struct ctype* ct)
 #if !defined _WIN64 && !defined __amd64__
     lua_rawgeti(L, usr, 0);
     mt = (const struct ctype*) lua_touserdata(L, -1);
-    if (!mt->pointers && mt->type == COMPLEX_DOUBLE_TYPE) {
+    if (!mt->pointers && !mt->is_reference && mt->type == COMPLEX_DOUBLE_TYPE) {
         ret += sizeof(void*);
     }
     lua_pop(L, 1);
@@ -686,7 +686,7 @@ cfunction compile_callback(lua_State* L, int fidx, int ct_usr, const struct ctyp
 #if !defined _WIN64 && !defined __amd64__
     lua_rawgeti(L, ct_usr, 0);
     mt = (const struct ctype*) lua_touserdata(L, -1);
-    if (!mt->pointers && mt->type == COMPLEX_DOUBLE_TYPE) {
+    if (!mt->pointers && !mt->is_reference && mt->type == COMPLEX_DOUBLE_TYPE) {
         hidden_arg_off = reg.off;
         reg.off += sizeof(void*);
     }
@@ -699,7 +699,7 @@ cfunction compile_callback(lua_State* L, int fidx, int ct_usr, const struct ctyp
         lua_rawgeti(L, ct_usr, i);
         mt = (const struct ctype*) lua_touserdata(L, -1);
 
-        if (mt->pointers) {
+        if (mt->pointers || mt->is_reference) {
             lua_getuservalue(L, -1);
             lua_rawseti(L, -3, ++num_upvals); /* usr value */
             lua_rawseti(L, -2, ++num_upvals); /* mt */
@@ -838,12 +838,12 @@ cfunction compile_callback(lua_State* L, int fidx, int ct_usr, const struct ctyp
     lua_rawgeti(L, ct_usr, 0);
     mt = (const struct ctype*) lua_touserdata(L, -1);
 
-    | call_rrrp extern lua_callk, L_ARG, nargs, (mt->pointers || mt->type != VOID_TYPE) ? 1 : 0, 0
+    | call_rrrp extern lua_callk, L_ARG, nargs, (mt->pointers || mt->is_reference || mt->type != VOID_TYPE) ? 1 : 0, 0
 
     // Unpack the return argument if not "void", also clean-up the lua stack
     // to remove the return argument and bind table. Use lua_settop rather
     // than lua_pop as lua_pop is implemented as a macro.
-    if (mt->pointers) {
+    if (mt->pointers || mt->is_reference) {
         lua_getuservalue(L, -1);
         lua_rawseti(L, -3, ++num_upvals); /* usr value */
         lua_rawseti(L, -2, ++num_upvals); /* mt */
@@ -1078,7 +1078,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
      * data is stored, which is popped by the calling code. */
     lua_rawgeti(L, ct_usr, 0);
     mbr_ct = (const struct ctype*) lua_touserdata(L, -1);
-    if (!mbr_ct->pointers && mbr_ct->type == COMPLEX_DOUBLE_TYPE) {
+    if (!mbr_ct->pointers && !mbr_ct->is_reference && mbr_ct->type == COMPLEX_DOUBLE_TYPE) {
         /* we can allocate more space for arguments as long as no add_*
          * function has been called yet, mbr_ct will be added as an upvalue in
          * the return processing later */
@@ -1093,7 +1093,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
         lua_rawgeti(L, ct_usr, (int) i);
         mbr_ct = (const struct ctype*) lua_touserdata(L, -1);
 
-        if (mbr_ct->pointers) {
+        if (mbr_ct->pointers || mbr_ct->is_reference) {
             lua_getuservalue(L, -1);
             num_upvals += 2;
             | call_rrrp extern check_typed_pointer, L_ARG, i, lua_upvalueindex(num_upvals), mbr_ct
@@ -1417,7 +1417,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
     lua_rawgeti(L, ct_usr, 0);
     mbr_ct = (const struct ctype*) lua_touserdata(L, -1);
 
-    if (mbr_ct->pointers || mbr_ct->type == INTPTR_TYPE) {
+    if (mbr_ct->pointers || mbr_ct->is_reference || mbr_ct->type == INTPTR_TYPE) {
         lua_getuservalue(L, -1);
         num_upvals += 2;
         | mov [rsp+32], rax // save the pointer
