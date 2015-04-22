@@ -94,6 +94,34 @@ static int type_error(lua_State* L, int idx, const char* to_type, int to_usr, co
     return lua_error(L);
 }
 
+static int cdata_tointeger(lua_State* L, int idx, ptrdiff_t* val)
+{
+    struct ctype ct;
+    void* addr = to_cdata(L, idx, &ct);
+    lua_pop(L, 1);
+
+    if (ct.pointers) {
+        return 0;
+    }
+
+    switch (ct.type) {
+    case INT8_TYPE:
+        *val = *(int8_t*)addr;
+        return 1;
+    case INT16_TYPE:
+        *val = *(int16_t*)addr;
+        return 1;
+    case INT32_TYPE:
+        *val = *(int32_t*)addr;
+        return 1;
+    case INT64_TYPE:
+        *val = *(int64_t*)addr;
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
 {
     if (ct->type == INVALID_TYPE) {
@@ -1485,13 +1513,24 @@ static ptrdiff_t lookup_cdata_index(lua_State* L, int idx, int ct_usr, struct ct
     ptrdiff_t off;
 
     ct_usr = lua_absindex(L, ct_usr);
+    int type = lua_type(L, idx);
 
-    switch (lua_type(L, idx)) {
+    switch (type) {
     case LUA_TNUMBER:
+    case LUA_TUSERDATA:
         /* possibilities are array, pointer */
 
         if (!ct->pointers || is_void_ptr(ct)) {
             return -1;
+        }
+
+        // unbox cdata
+        if (type == LUA_TUSERDATA) {
+            if (!cdata_tointeger(L, idx, &off)) {
+                return -1;
+            }
+        } else {
+            off = lua_tointeger(L, idx);
         }
 
         ct->is_array = 0;
@@ -1500,7 +1539,7 @@ static ptrdiff_t lookup_cdata_index(lua_State* L, int idx, int ct_usr, struct ct
 
         lua_pushvalue(L, ct_usr);
 
-        return (ct->pointers ? sizeof(void*) : ct->base_size) * lua_tonumber(L, 2);
+        return (ct->pointers ? sizeof(void*) : ct->base_size) * off;
 
     case LUA_TSTRING:
         /* possibilities are struct/union, pointer to struct/union */
