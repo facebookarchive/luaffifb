@@ -444,12 +444,12 @@ static void* check_pointer(lua_State* L, int idx, struct ctype* ct)
 {
     void* p;
     memset(ct, 0, sizeof(*ct));
-    ct->pointers = 1;
     idx = lua_absindex(L, idx);
 
     switch (lua_type(L, idx)) {
     case LUA_TNIL:
         ct->type = VOID_TYPE;
+        ct->pointers = 1;
         ct->is_null = 1;
         lua_pushnil(L);
         return NULL;
@@ -463,11 +463,13 @@ static void* check_pointer(lua_State* L, int idx, struct ctype* ct)
 
     case LUA_TLIGHTUSERDATA:
         ct->type = VOID_TYPE;
+        ct->pointers = 1;
         lua_pushnil(L);
         return lua_touserdata(L, idx);
 
     case LUA_TSTRING:
         ct->type = INT8_TYPE;
+        ct->pointers = 1;
         ct->is_unsigned = IS_CHAR_UNSIGNED;
         ct->is_array = 1;
         ct->base_size = 1;
@@ -481,6 +483,7 @@ static void* check_pointer(lua_State* L, int idx, struct ctype* ct)
         if (ct->type == INVALID_TYPE) {
             /* some other type of user data */
             ct->type = VOID_TYPE;
+            ct->pointers = 1;
             return lua_touserdata(L, idx);
         } else if (ct->type == STRUCT_TYPE || ct->type == UNION_TYPE) {
             return p;

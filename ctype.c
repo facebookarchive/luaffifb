@@ -219,14 +219,13 @@ err:
 }
 
 /* to_cdata returns the struct cdata* and pushes the user value onto the
- * stack. If the index is not a ctype then ct is not touched, a nil is pushed,
- * NULL is returned, and ct->type is set to INVALID_TYPE.  Also dereferences
- * references */
+ * stack. If the index is not a ctype then ct is set to the zero value such
+ * that ct->type is INVALID_TYPE, a nil is pushed, and NULL is returned. */
 void* to_cdata(lua_State* L, int idx, struct ctype* ct)
 {
     struct cdata* cd;
 
-    ct->type = INVALID_TYPE;
+    memset(ct, 0, sizeof(struct ctype));
     if (!lua_isuserdata(L, idx) || !lua_getmetatable(L, idx)) {
         lua_pushnil(L);
         return NULL;
