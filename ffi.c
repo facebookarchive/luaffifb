@@ -1735,6 +1735,14 @@ err:
         case DOUBLE_TYPE:
             lua_pushnumber(L, *(double*) data);
             break;
+        case COMPLEX_DOUBLE_TYPE:
+            to = push_cdata(L, -1, &ct);
+            *(complex_double*) to = *(complex_double*) data;
+            break;
+        case COMPLEX_FLOAT_TYPE:
+            to = push_cdata(L, -1, &ct);
+            *(complex_float*) to = *(complex_float*) data;
+            break;
         default:
             luaL_error(L, "internal error: invalid member type");
         }
