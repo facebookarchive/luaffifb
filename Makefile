@@ -1,4 +1,4 @@
-.PHONY: all clean test
+.PHONY: all clean test headers macosx test_macosx posix test_posix
 
 PKG_CONFIG=pkg-config
 LUA=lua
@@ -18,6 +18,9 @@ endif
 
 all:
 	if [ `uname` = "Darwin" ]; then $(MAKE) macosx; else $(MAKE) posix; fi
+
+headers:
+	$(MAKE) call_x86.h call_x64.h call_x64win.h
 
 test:
 	if [ `uname` = "Darwin" ]; then $(MAKE) test_macosx; else $(MAKE) test_posix; fi
@@ -53,7 +56,4 @@ $(TESTSO): test.o
 
 test_posix: $(TESTSO) $(MODSO)
 	LD_LIBRARY_PATH=./ $(LUA) test.lua
-
-
-
 
