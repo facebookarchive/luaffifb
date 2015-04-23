@@ -2506,6 +2506,24 @@ static int ffi_errno(lua_State* L)
     return 1;
 }
 
+static int ffi_type(lua_State* L)
+{
+    if (lua_isuserdata(L, 1) && lua_getmetatable(L, 1)) {
+        if (equals_upval(L, -1, &cdata_mt_key) || equals_upval(L, -1, &ctype_mt_key)) {
+            lua_pushstring(L, "cdata");
+            return 1;
+        }
+        lua_pop(L, 1); /* mt */
+    }
+
+    /* call the old _G.type, we use an upvalue as _G.type is set
+     * to this function */
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_insert(L, 1);
+    lua_call(L, lua_gettop(L)-1, LUA_MULTRET);
+    return lua_gettop(L);
+}
+
 static int ffi_number(lua_State* L)
 {
     struct ctype ct;
@@ -3413,5 +3431,10 @@ int luaopen_ffi(lua_State* L)
     lua_setglobal(L, "tonumber");
     lua_setfield(L, -2, "number"); /* ffi.number */
 
+    lua_getglobal(L, "type");
+    lua_pushcclosure(L, &ffi_type, 1);
+    lua_pushvalue(L, -1);
+    lua_setglobal(L, "type");
+    lua_setfield(L, -2, "type"); /* ffi.type */
     return 1;
 }
