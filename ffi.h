@@ -58,11 +58,9 @@ extern "C" {
 #include <sys/mman.h>
 #endif
 
-#if __STDC_VERSION__+0 >= 199901L
 #include <complex.h>
 #define HAVE_COMPLEX
 #define HAVE_LONG_DOUBLE
-#endif
 
 #ifndef NDEBUG
 #define DASM_CHECKS
