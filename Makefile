@@ -34,7 +34,7 @@ test_macosx:
 posix: $(MODSO) $(TESTSO)
 
 clean:
-	rm -f *.o *.so call_*.h *.dylib
+	rm -f *.o *.so *.dylib
 
 call_x86.h: call_x86.dasc dynasm/*.lua
 	$(LUA) dynasm/dynasm.lua -LN -o $@ $<
