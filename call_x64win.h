@@ -387,6 +387,9 @@ static void add_int(Dst_DECL, const struct ctype* ct, struct reg_alloc* reg, int
 #endif
 
     else if (is_int64) {
+        if (reg->off % 8 != 0) {
+            reg->off += 8 - (reg->off % 8);
+        }
         dasm_put(Dst, 285, reg->off);
         reg->off += 8;
     } else {
