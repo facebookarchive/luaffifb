@@ -716,7 +716,7 @@ end
 
 check(tostring(1+3*i), '1+3i')
 check(tostring((1+3*i)*(2+4*i)), '-10+10i')
-check(tostring((3+2*i)*(3-2*i)), '13')
+check(tostring((3+2*i)*(3-2*i)), '13+0i')
 
 -- Should ignore unknown attributes
 ffi.cdef [[
