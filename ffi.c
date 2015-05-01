@@ -160,10 +160,13 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
     }
 }
 
+static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
+
 #define TO_NUMBER(TYPE, ALLOW_POINTERS)                                     \
     TYPE ret = 0;                                                           \
     void* p;                                                                \
     struct ctype ct;                                                        \
+    cfunction f;                                                            \
                                                                             \
     switch (lua_type(L, idx)) {                                             \
     case LUA_TBOOLEAN:                                                      \
@@ -186,6 +189,16 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
             type_error(L, idx, #TYPE, 0, NULL);                             \
         }                                                                   \
         ret = (TYPE) (intptr_t) lua_topointer(L, idx);                      \
+        break;                                                              \
+                                                                            \
+    case LUA_TFUNCTION:                                                     \
+        if (!ALLOW_POINTERS) {                                              \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        if (!get_cfunction_address(L, idx, &f)) {                           \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        ret = (TYPE) (intptr_t) f;                                          \
         break;                                                              \
                                                                             \
     case LUA_TUSERDATA:                                                     \
@@ -622,6 +635,48 @@ err:
     return NULL;
 }
 
+/**
+ * gets the address of the wrapped C function for the lua function value at idx
+ * and returns 1 if it exists; otherwise returns 0 and nothing is pushed */
+static int get_cfunction_address(lua_State* L, int idx, cfunction* addr)
+{
+    if (!lua_isfunction(L, idx)) return 0;
+
+    int top = lua_gettop(L);
+
+    // Get the last upvalue
+    int n = 2;
+    while (lua_getupvalue(L, idx, n)) {
+        lua_pop(L, 1);
+        n++;
+    }
+
+    if (!lua_getupvalue(L, idx, n - 1))
+        return 0;
+
+    if (!lua_isuserdata(L, -1) || !lua_getmetatable(L, -1)) {
+        lua_pop(L, 1);
+        return 0;
+    }
+
+    push_upval(L, &callback_mt_key);
+    if (!lua_rawequal(L, -1, -2)) {
+        lua_pop(L, 3);
+        return 0;
+    }
+
+    /* stack is:
+     * userdata upval
+     * metatable
+     * callback_mt
+     */
+
+    cfunction* f = lua_touserdata(L, -3);
+    *addr = f[1];
+    lua_pop(L, 3);
+    return 1;
+}
+
 /* to_cfunction converts a value at idx with usr table at to_usr and type tt
  * into a function. Leaves the stack unchanged. */
 static cfunction check_cfunction(lua_State* L, int idx, int to_usr, const struct ctype* tt, int check_pointers)
@@ -636,6 +691,10 @@ static cfunction check_cfunction(lua_State* L, int idx, int to_usr, const struct
 
     switch (lua_type(L, idx)) {
     case LUA_TFUNCTION:
+        if (get_cfunction_address(L, idx, &f)) {
+            return f;
+        }
+
         /* Function cdatas are pinned and must be manually cleaned up by
          * calling func:free(). */
         push_upval(L, &callbacks_key);
@@ -1133,6 +1192,14 @@ static int do_new(lua_State* L, int is_cast)
     /* don't push a callback when we have a c function, as cb:set needs a
      * compiled callback from a lua function to work */
     if (!ct.pointers && ct.type == FUNCTION_PTR_TYPE && (lua_isnil(L, 2) || lua_isfunction(L, 2))) {
+        // Get the bound C function if this is a ffi lua function
+        cfunction func;
+        if (get_cfunction_address(L, 2, &func)) {
+            p = push_cdata(L, -1, &ct);
+            *(cfunction*) p = func;
+            return 1;
+        }
+
         /* Function cdatas are pinned and must be manually cleaned up by
          * calling func:free(). */
         compile_callback(L, 2, -1, &ct);

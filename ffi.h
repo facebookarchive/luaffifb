@@ -415,7 +415,7 @@ static float cimagf(complex_float c) {
 void set_defined(lua_State* L, int ct_usr, struct ctype* ct);
 struct ctype* push_ctype(lua_State* L, int ct_usr, const struct ctype* ct);
 void* push_cdata(lua_State* L, int ct_usr, const struct ctype* ct); /* called from asm */
-void push_callback(lua_State* L, cfunction f);
+void push_callback(lua_State* L, cfunction luafunc, cfunction cfunc);
 void check_ctype(lua_State* L, int idx, struct ctype* ct);
 void* to_cdata(lua_State* L, int idx, struct ctype* ct);
 void* check_cdata(lua_State* L, int idx, struct ctype* ct);
