@@ -22,6 +22,7 @@ end
 print('Running test')
 
 ffi.cdef [[
+void print_g_date();
 enum e8 {
     FOO8,
     BAR8,
@@ -269,6 +270,8 @@ struct bz_TNUM_ZNUM_BNUM {
 int print_bz_TNUM_ZNUM_BNUM(size_t* sz, size_t* align, char* buf, struct bz_TNUM_ZNUM_BNUM* s);
 ]]
 
+ffi.C.print_g_date()
+
 local i = ffi.C.i
 local test_values = {
     ['void*'] = ffi.new('char[3]'),
@@ -466,6 +469,9 @@ for convention,c in pairs(dlls) do
             end
 
             local v = ffi.new('struct align_attr_def_' .. suffix, {0, test})
+            print(type)
+            print("Align " .. c['print_align_attr_def_' .. suffix](buf, v))
+            print(ffi.string(buf))
             checkalign(type, v, c['print_align_attr_def_' .. suffix](buf, v))
         end
     end

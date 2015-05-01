@@ -605,7 +605,7 @@ void* check_typed_pointer(lua_State* L, int idx, int to_usr, const struct ctype*
         /* any pointer can convert to void* */
         goto suc;
 
-    } else if (is_void_ptr(&ft) && ft.pointers == 1) {
+    } else if (is_void_ptr(&ft) && (ft.pointers || ft.is_reference)) {
         /* void* can convert to any pointer */
         goto suc;
 
@@ -980,7 +980,7 @@ static void set_value(lua_State* L, int idx, void* to, int to_usr, const struct 
     if (tt->is_array) {
         set_array(L, idx, to, to_usr, tt, check_pointers);
 
-    } else if (tt->pointers) {
+    } else if (tt->pointers || tt->is_reference) {
         union {
             uint8_t c[sizeof(void*)];
             void* p;
@@ -1149,7 +1149,7 @@ static void get_variable_array_size(lua_State* L, int idx, struct ctype* ct)
 static int is_scalar(struct ctype* ct)
 {
     int type = ct->type;
-    if (ct->pointers) {
+    if (ct->pointers || ct->is_reference) {
         return !ct->is_array;
     }
     return type != STRUCT_TYPE && type != UNION_TYPE && !IS_COMPLEX(type);
