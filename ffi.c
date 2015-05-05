@@ -1418,7 +1418,8 @@ static int cdata_gc(lua_State* L)
 static int callback_free(lua_State* L)
 {
     cfunction* p = (cfunction*) lua_touserdata(L, 1);
-    free_code(get_jit(L), L, *p);
+    // FIXME: temporarily disabled to prevent SIGTRAP on exit
+    // free_code(get_jit(L), L, *p);
     return 0;
 }
 
