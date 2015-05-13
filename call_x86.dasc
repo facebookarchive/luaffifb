@@ -506,21 +506,24 @@ static void add_int(Dst_DECL, const struct ctype* ct, struct reg_alloc* reg, int
         reg->ints++;
     }
 #endif
-
-    else if (is_int64) {
+    else {
+#if defined _WIN64 || defined __amd64__
         if (reg->off % 8 != 0) {
             reg->off += 8 - (reg->off % 8);
         }
-        |.if X64
-        | mov [rsp + reg->off], rax
-        |.else
-        | mov [rsp + reg->off], RET_L
-        | mov [rsp + reg->off + 4], RET_H
-        |.endif
-        reg->off += 8;
-    } else {
-        | mov [rsp+reg->off], eax
-        reg->off += 4;
+#endif
+        if (is_int64) {
+            |.if X64
+            | mov [rsp + reg->off], rax
+            |.else
+            | mov [rsp + reg->off], RET_L
+            | mov [rsp + reg->off + 4], RET_H
+            |.endif
+            reg->off += 8;
+        } else {
+            | mov [rsp+reg->off], eax
+            reg->off += 4;
+        }
     }
 }
 

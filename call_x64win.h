@@ -385,16 +385,19 @@ static void add_int(Dst_DECL, const struct ctype* ct, struct reg_alloc* reg, int
         reg->ints++;
     }
 #endif
-
-    else if (is_int64) {
+    else {
+#if defined _WIN64 || defined __amd64__
         if (reg->off % 8 != 0) {
             reg->off += 8 - (reg->off % 8);
         }
-        dasm_put(Dst, 285, reg->off);
-        reg->off += 8;
-    } else {
-        dasm_put(Dst, 286, reg->off);
-        reg->off += 4;
+#endif
+        if (is_int64) {
+            dasm_put(Dst, 285, reg->off);
+            reg->off += 8;
+        } else {
+            dasm_put(Dst, 286, reg->off);
+            reg->off += 4;
+        }
     }
 }
 

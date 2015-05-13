@@ -675,3 +675,43 @@ EXPORT int va_list_size, va_list_align;
 int va_list_size = sizeof(va_list);
 int va_list_align = alignof(va_list);
 
+
+EXPORT char buf[512];
+char buf[512];
+
+EXPORT void test_call_echo(char* c);
+void test_call_echo(char* c)
+{
+    sprintf(buf, "%s", c);
+}
+
+EXPORT void test_call_pppppii(void* a, void* b, void* c, void* d, void* e, int f, int g);
+void test_call_pppppii(void* a, void* b, void* c, void* d, void* e, int f, int g)
+{
+    sprintf(buf, "%p %p %p %p %p %d %d", a, b, c, d, e, f, g);
+}
+
+EXPORT void test_call_pppppiiiiii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, int i4, int i5, int i6);
+void test_call_pppppiiiiii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, int i4, int i5, int i6)
+{
+    sprintf(buf, "%p %p %p %p %p %d %d %d %d %d %d", p1, p2, p3, p4, p5, i1, i2, i3, i4, i5, i6);
+}
+
+EXPORT void test_call_pppppffffff(void* p1, void* p2, void* p3, void* p4, void* p5, float f1, float f2, float f3, float f4, float f5, float f6);
+void test_call_pppppffffff(void* p1, void* p2, void* p3, void* p4, void* p5, float f1, float f2, float f3, float f4, float f5, float f6)
+{
+    sprintf(buf, "%p %p %p %p %p %0.1f %0.1f %0.1f %0.1f %0.1f %0.1f", p1, p2, p3, p4, p5, f1, f2, f3, f4, f5, f6);
+}
+
+EXPORT void test_call_pppppiifiii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, float f3, int i4, int i5, int i6);
+void test_call_pppppiifiii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, float f3, int i4, int i5, int i6)
+{
+    sprintf(buf, "%p %p %p %p %p %d %d %0.1f %d %d %d", p1, p2, p3, p4, p5, i1, i2, f3, i4, i5, i6);
+}
+
+EXPORT void test_call_pppppiiifii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, float f4, int i5, int i6);
+void test_call_pppppiiifii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, float f4, int i5, int i6)
+{
+    sprintf(buf, "%p %p %p %p %p %d %d %d %0.1f %d %d", p1, p2, p3, p4, p5, i1, i2, i3, f4, i5, i6);
+}
+

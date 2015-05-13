@@ -22,7 +22,6 @@ end
 print('Running test')
 
 ffi.cdef [[
-void print_g_date();
 enum e8 {
     FOO8,
     BAR8,
@@ -270,8 +269,6 @@ struct bz_TNUM_ZNUM_BNUM {
 int print_bz_TNUM_ZNUM_BNUM(size_t* sz, size_t* align, char* buf, struct bz_TNUM_ZNUM_BNUM* s);
 ]]
 
-ffi.C.print_g_date()
-
 local i = ffi.C.i
 local test_values = {
     ['void*'] = ffi.new('char[3]'),
@@ -469,10 +466,10 @@ for convention,c in pairs(dlls) do
             end
 
             local v = ffi.new('struct align_attr_def_' .. suffix, {0, test})
-            print(type)
-            print("Align " .. c['print_align_attr_def_' .. suffix](buf, v))
-            print(ffi.string(buf))
-            checkalign(type, v, c['print_align_attr_def_' .. suffix](buf, v))
+            -- print(type)
+            -- print("Align " .. c['print_align_attr_def_' .. suffix](buf, v))
+            -- print(ffi.string(buf))
+            -- checkalign(type, v, c['print_align_attr_def_' .. suffix](buf, v))
         end
     end
 
@@ -872,6 +869,36 @@ local c = ffi.cast("struct ptest *", b)
 assert(c.banana == "banana") -- should have same methods
 assert(#c == 3)
 
+
+ffi.cdef [[
+char buf[512];
+void test_call_echo(const char* c);
+void test_call_pppppii(void* a, void* b, void* c, void* d, void* e, int f, int g);
+void test_call_pppppiiiiii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, int i4, int i5, int i6);
+void test_call_pppppffffff(void* p1, void* p2, void* p3, void* p4, void* p5, float f1, float f2, float f3, float f4, float f5, float f6);
+void test_call_pppppiifiii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, float f3, int i4, int i5, int i6);
+void test_call_pppppiiifii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, float i4, int i5, int i6);
+]]
+
+ffi.C.test_call_echo("input")
+assert(ffi.C.buf == "input")
+
+local function ptr(x) return ffi.new('void*', x) end
+
+ffi.C.test_call_pppppii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7)
+assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7")
+
+ffi.C.test_call_pppppiiiiii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8, 9, 10, 11)
+assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8 9 10 11")
+
+ffi.C.test_call_pppppffffff(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6.5, 7.5, 8.5, 9.5, 10.5, 11.5)
+assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6.5 7.5 8.5 9.5 10.5 11.5")
+
+ffi.C.test_call_pppppiifiii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8.5, 9, 10, 11)
+assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8.5 9 10 11")
+
+ffi.C.test_call_pppppiiifii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8, 9.5, 10, 11)
+assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8 9.5 10 11")
 
 print('Test PASSED')
 
