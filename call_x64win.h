@@ -13,7 +13,7 @@
  * Copyright (c) 2011 James R. McKaskill. See license in ffi.h
  */
 
-static const unsigned char build_actionlist[1965] = {
+static const unsigned char build_actionlist[1959] = {
   248,10,184,1,0,0,0,76,139,109,252,240,76,139,101,252,248,72,137,252,236,93,
   195,255,248,11,232,251,1,0,72,185,237,237,137,1,184,0,0,0,0,76,139,109,252,
   240,76,139,101,252,248,72,137,252,236,93,195,255,248,12,102,15,214,68,36,
@@ -102,12 +102,12 @@ static const unsigned char build_actionlist[1965] = {
   76,36,32,72,137,8,252,233,244,10,255,72,137,68,36,32,232,251,1,0,72,185,237,
   237,137,1,73,184,237,237,72,199,194,0,0,0,0,76,137,225,232,251,1,7,72,139,
   76,36,32,72,137,8,252,233,244,10,255,102,15,214,68,36,32,232,251,1,0,72,185,
-  237,237,137,1,73,184,237,237,72,199,194,0,0,0,0,76,137,225,232,251,1,7,72,
-  139,76,36,32,72,137,8,252,233,244,10,255,102,15,214,76,36,40,102,15,214,68,
-  36,32,232,251,1,0,72,185,237,237,137,1,73,184,237,237,72,199,194,0,0,0,0,
-  76,137,225,232,251,1,7,72,139,76,36,40,72,137,72,8,72,139,76,36,32,72,137,
-  8,252,233,244,10,255,252,233,244,11,255,252,233,244,13,255,252,233,244,14,
-  255,252,233,244,15,255,252,243,15,90,192,252,233,244,12,255
+  237,237,137,1,73,184,237,237,72,199,194,237,76,137,225,232,251,1,7,72,139,
+  76,36,32,72,137,8,252,233,244,10,255,102,15,214,76,36,40,102,15,214,68,36,
+  32,232,251,1,0,72,185,237,237,137,1,73,184,237,237,72,199,194,237,76,137,
+  225,232,251,1,7,72,139,76,36,40,72,137,72,8,72,139,76,36,32,72,137,8,252,
+  233,244,10,255,252,233,244,11,255,252,233,244,13,255,252,233,244,14,255,252,
+  233,244,15,255,252,243,15,90,192,252,233,244,12,255
 };
 
 static const char *const globnames[] = {
@@ -1113,23 +1113,25 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             break;
 
         case COMPLEX_FLOAT_TYPE:
-            num_upvals++;
-            dasm_put(Dst, 1826, (unsigned int)((uintptr_t)(perr)), (unsigned int)(((uintptr_t)(perr))>>32), (unsigned int)((uintptr_t)(mbr_ct)), (unsigned int)(((uintptr_t)(mbr_ct))>>32));
+            lua_getuservalue(L, -1);
+            num_upvals += 2;
+            dasm_put(Dst, 1826, (unsigned int)((uintptr_t)(perr)), (unsigned int)(((uintptr_t)(perr))>>32), (unsigned int)((uintptr_t)(mbr_ct)), (unsigned int)(((uintptr_t)(mbr_ct))>>32), lua_upvalueindex(num_upvals));
             break;
 
         case COMPLEX_DOUBLE_TYPE:
-            num_upvals++;
-            dasm_put(Dst, 1873, (unsigned int)((uintptr_t)(perr)), (unsigned int)(((uintptr_t)(perr))>>32), (unsigned int)((uintptr_t)(mbr_ct)), (unsigned int)(((uintptr_t)(mbr_ct))>>32));
+            lua_getuservalue(L, -1);
+            num_upvals += 2;
+            dasm_put(Dst, 1870, (unsigned int)((uintptr_t)(perr)), (unsigned int)(((uintptr_t)(perr))>>32), (unsigned int)((uintptr_t)(mbr_ct)), (unsigned int)(((uintptr_t)(mbr_ct))>>32), lua_upvalueindex(num_upvals));
             break;
 
         case VOID_TYPE:
             lua_pop(L, 1);
-            dasm_put(Dst, 1935);
+            dasm_put(Dst, 1929);
             break;
 
         case BOOL_TYPE:
             lua_pop(L, 1);
-            dasm_put(Dst, 1940);
+            dasm_put(Dst, 1934);
             break;
 
         case INT8_TYPE:
@@ -1139,7 +1141,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             } else {
                 dasm_put(Dst, 1357);
             }
-            dasm_put(Dst, 1945);
+            dasm_put(Dst, 1939);
             break;
 
         case INT16_TYPE:
@@ -1149,27 +1151,27 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             } else {
                 dasm_put(Dst, 1365);
             }
-            dasm_put(Dst, 1945);
+            dasm_put(Dst, 1939);
             break;
 
         case INT32_TYPE:
         case ENUM_TYPE:
             lua_pop(L, 1);
             if (mbr_ct->is_unsigned) {
-                dasm_put(Dst, 1950);
+                dasm_put(Dst, 1944);
             } else {
-                dasm_put(Dst, 1945);
+                dasm_put(Dst, 1939);
             }
             break;
 
         case FLOAT_TYPE:
             lua_pop(L, 1);
-            dasm_put(Dst, 1955);
+            dasm_put(Dst, 1949);
             break;
 
         case DOUBLE_TYPE:
             lua_pop(L, 1);
-            dasm_put(Dst, 1960);
+            dasm_put(Dst, 1954);
             break;
 
         default:

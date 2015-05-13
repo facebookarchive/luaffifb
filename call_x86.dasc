@@ -1474,7 +1474,8 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             break;
 
         case COMPLEX_FLOAT_TYPE:
-            num_upvals++;
+            lua_getuservalue(L, -1);
+            num_upvals += 2;
             |.if X64
             | // complex floats are returned as two floats packed into xmm0
             | movq qword [rsp+32], xmm0
@@ -1485,7 +1486,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             |.endif
             |
             | get_errno
-            | call_rrp extern push_cdata, L_ARG, 0, mbr_ct
+            | call_rrp extern push_cdata, L_ARG, lua_upvalueindex(num_upvals), mbr_ct
             |
             | // ((complex_float*) cdata) = val
             |.if X64
@@ -1502,14 +1503,15 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             break;
 
         case COMPLEX_DOUBLE_TYPE:
-            num_upvals++;
+            lua_getuservalue(L, -1);
+            num_upvals += 2;
             |.if X64
             | // complex doubles are returned as xmm0 and xmm1
             | movq qword [rsp+40], xmm1
             | movq qword [rsp+32], xmm0
             |
             | get_errno
-            | call_rrp extern push_cdata, L_ARG, 0, mbr_ct
+            | call_rrp extern push_cdata, L_ARG, lua_upvalueindex(num_upvals), mbr_ct
             |
             | // ((complex_double*) cdata)->real = val0
             | // ((complex_double*) cdata)->imag = val1
