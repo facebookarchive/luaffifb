@@ -1604,6 +1604,7 @@ static ptrdiff_t lookup_cdata_index(lua_State* L, int idx, int ct_usr, struct ct
         ct->is_array = 0;
         ct->pointers--;
         ct->const_mask >>= 1;
+        ct->is_reference = 0;
 
         lua_pushvalue(L, ct_usr);
 

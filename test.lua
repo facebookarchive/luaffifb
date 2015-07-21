@@ -906,5 +906,29 @@ assert(ffi.istype('complex', sum))
 sum = ffi.C.add_fc(ffi.new('complex float', 1, 2), ffi.new('complex float', 3, 5))
 assert(ffi.istype('complex float', sum))
 
+ffi.cdef [[
+struct Arrays {
+    int ints[3];
+    unsigned int uints[3];
+};
+struct ArrayOfArrays {
+    struct Arrays arrays[3];
+};
+]]
+
+local struct = ffi.new('struct Arrays')
+local structOfStructs = ffi.new('struct ArrayOfArrays')
+for i=1,3 do
+    struct.ints[i] = i
+    struct.uints[i] = i
+    structOfStructs.arrays[0].ints[i] = i
+end
+for i=1,3 do
+    assert(struct.ints[i] == i)
+    assert(struct.uints[i] == i)
+    assert(structOfStructs.arrays[0].ints[i] == i)
+end
+
+
 print('Test PASSED')
 
