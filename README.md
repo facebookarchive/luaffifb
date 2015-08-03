@@ -6,63 +6,26 @@ http://luajit.org/ext_ffi.html). It can parse C function declarations and
 struct definitions that have been directly copied out of C header files and
 into lua source as a string.
 
-License
--------
-Copyright (c) 2011 James R. McKaskill.
-MIT same as Lua 5.1. See full license text in ffi.h.
+This is a fork of https://github.com/jmckaskill/luaffi
 
 Source
 ------
-https://github.com/jmckaskill/luaffi
+https://github.com/facebook/luaffifb
 
 Platforms
 ---------
 Currently supported:
-- windows x86/x64
-- linux x86/x64
-- windows CE ARM little endian (ARMv4+)
+- Linux x86/x64
 - OSX x86/x64
 
-Currently only dll builds are supported (ie no static).
-
-Runs with both Lua 5.1 and Lua 5.2 beta.
+Runs with both Lua 5.1 and Lua 5.2.
 
 Build
 -----
-
-On windows use msvcbuild.bat in a visual studio cmd prompt. Available targets are:
-- nothing or release: default release build
-- debug: debug build
-- test: build and run the test debug build
-- test-release: build and run the test release build
-- clean: cleanup object files
-
-Edit msvcbuild.bat if your lua exe, lib, lua include path, or lua dll name
-differ from c:\Lua5.1 and lua5.1.dll.
-
-The build script does not build for CE as this is non-trivial and very
-dependent on which CE profile (or even a custom one). Instead to build on CE,
-add generate_call_h.bat as a pre-build event and then build *.c with UNDER_CE
-defined plus whatever defines windows.h requires.
-
-On posix use make. Available targets are:
-- nothing or all: default release build
-- debug: debug build
-- test: build and run the test build
-- clean: cleanup object files
-- macosx: release build for Mac OSX
-
-Edit the Makefile if your lua exe differs from `lua5.1` or if you can't get
-the include and lib arguments from pkg-config.
+- Run `luarocks make`
 
 Known Issues
 ------------
-- Has not been bullet proof tested
-- Casting is different from luajit. For the moment this follows C++
-  - ffi.cast is equivalent to a C cast in C++ (T t = (T) f)
-  - ffi.new and ctype() is equivalent to an implicit cast in C++ (T t = f)
-     - since this follows C++ semantics void* does not cast to T* (an explicit
-       cast using ffi.cast is required)
 - Comparing a ctype pointer to nil doesn't work the same as luajit. This is
   unfixable with the current metamethod semantics. Instead use ffi.C.NULL
 - Constant expressions can't handle non integer intermediate values (eg
@@ -74,14 +37,6 @@ this upgrade to Lua 5.2 or use boxed numbers (uint64_t and uintptr_t).
   bitfields?). Note that "int s:8" is unsigned on unix x86/x64, but signed on
 windows.
 
-Todo
-----
-See Github issues for the most up to date list.
-- Fix arm support - broken since the callback refactor
-- Vectors
-- C++ reference types
-- Subtracting one pointer from another
-- Variable sized members in unions (is this needed?)
 
 How it works
 ------------

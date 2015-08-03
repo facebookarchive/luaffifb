@@ -2,15 +2,15 @@ package = "luaffi"
 version = "scm-1"
 
 source = {
-   url = "git://github.com/jmckaskill/luaffi.git",
+   url = "https://github.com/facebook/luaffifb.git",
 }
 
 description = {
    summary = "FFI library for calling C functions from lua",
    detailed = [[
    ]],
-   homepage = "https://github.com/jmckaskill/luaffi",
-   license = "MIT"
+   homepage = "https://github.com/facebook/luaffifb",
+   license = "BSD"
 }
 
 dependencies = {
