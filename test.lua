@@ -934,6 +934,17 @@ for i=1,3 do
     assert(structOfStructs.arrays[0].ints[i] == i)
 end
 
+-- Test ffi.string
+local buf = ffi.new('char[5]')
+ffi.fill(buf, 4, 97)
+buf[4] = 0
+
+assert(ffi.string(buf) == 'aaaa')
+assert(ffi.string(buf, 4) == 'aaaa')
+assert(ffi.string(buf, 2) == 'aa')
+assert(ffi.string(buf, 0) == '')
+assert(ffi.string(buf, ffi.new('long long', 2)) == 'aa')
+assert(ffi.string(buf, ffi.new('int', 2)) == 'aa')
 
 print('Test PASSED')
 
