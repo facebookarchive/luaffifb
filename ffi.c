@@ -3287,8 +3287,13 @@ static int setup_upvals(lua_State* L)
         ct.pointers = 1;
         ct.is_null = 1;
 
+        /* add ffi.C.NULL */
         push_cdata(L, 0, &ct);
         lua_setfield(L, -2, "NULL");
+
+        /* add ffi.NULL */
+        push_cdata(L, 0, &ct);
+        lua_setfield(L, 1, "NULL");
 
         memset(&ct, 0, sizeof(ct));
         ct.type = COMPLEX_DOUBLE_TYPE;

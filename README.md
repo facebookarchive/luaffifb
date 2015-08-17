@@ -27,7 +27,7 @@ Build
 Known Issues
 ------------
 - Comparing a ctype pointer to nil doesn't work the same as luajit. This is
-  unfixable with the current metamethod semantics. Instead use ffi.C.NULL
+  unfixable with the current metamethod semantics. Instead use ffi.NULL
 - Constant expressions can't handle non integer intermediate values (eg
   offsetof won't work because it manipulates pointers)
 - Not all metamethods work with lua 5.1 (eg char* + number). This is due to
