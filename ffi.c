@@ -2632,9 +2632,11 @@ static int ffi_string(lua_State* L)
         size_t sz;
 
         if (lua_isuserdata(L, 2)) {
-            if (!cdata_tointeger(L, 2, &sz)) {
+            ptrdiff_t val;
+            if (!cdata_tointeger(L, 2, &val)) {
                 type_error(L, 2, "int", 0, NULL);
             }
+            sz = (size_t) val;
         } else if (!lua_isnil(L, 2)) {
             sz = (size_t) luaL_checknumber(L, 2);
 
