@@ -2,7 +2,7 @@ package = "luaffi"
 version = "scm-1"
 
 source = {
-   url = "https://github.com/facebook/luaffifb.git",
+   url = "git://github.com/facebook/luaffifb.git",
 }
 
 description = {
