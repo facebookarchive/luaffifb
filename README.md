@@ -22,7 +22,13 @@ Runs with both Lua 5.1 and Lua 5.2.
 
 Build
 -----
-- Run `luarocks make`
+In a terminal:
+
+```bash
+git clone https://github.com/facebook/luaffifb
+cd luaffifb
+luarocks make
+```
 
 Documentation
 -------------
