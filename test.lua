@@ -922,12 +922,12 @@ struct ArrayOfArrays {
 
 local struct = ffi.new('struct Arrays')
 local structOfStructs = ffi.new('struct ArrayOfArrays')
-for i=1,3 do
+for i=0,2 do
     struct.ints[i] = i
     struct.uints[i] = i
     structOfStructs.arrays[0].ints[i] = i
 end
-for i=1,3 do
+for i=0,2 do
     assert(struct.ints[i] == i)
     assert(struct.uints[i] == i)
     assert(structOfStructs.arrays[0].ints[i] == i)
