@@ -768,7 +768,6 @@ check(tostring(ffi.debug().functions.register_foo):match('%b<>'), '<void (*)(int
 
 ffi.cdef [[
     typedef struct __sFILE FILE;
-    FILE *fopen(const char * , const char * ) __asm("_" "fopen" );
 ]]
 
 assert(not ffi.istype('int', ffi.new('int*')))
@@ -945,6 +944,18 @@ assert(ffi.string(buf, 2) == 'aa')
 assert(ffi.string(buf, 0) == '')
 assert(ffi.string(buf, ffi.new('long long', 2)) == 'aa')
 assert(ffi.string(buf, ffi.new('int', 2)) == 'aa')
+
+-- Test io.tmpfile()
+ffi.cdef [[
+    int fprintf ( FILE * stream, const char * format, ... );
+]]
+local f = io.tmpfile()
+ffi.C.fprintf(f, "test: %s\n", "foo")
+
+f:seek("set", 0)
+local str = f:read('*l')
+assert(str == 'test: foo', str)
+f:close()
 
 print('Test PASSED')
 

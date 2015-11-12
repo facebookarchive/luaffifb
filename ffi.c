@@ -99,6 +99,24 @@ static int type_error(lua_State* L, int idx, const char* to_type, int to_usr, co
     return lua_error(L);
 }
 
+static void* userdata_toptr(lua_State* L, int idx)
+{
+    void* ptr = lua_touserdata(L, idx);
+
+    // check for FILE*
+    lua_getmetatable(L, idx);
+    luaL_getmetatable(L, LUA_FILEHANDLE);
+    int isfile = lua_rawequal(L, -1, -2);
+    lua_pop(L, 2);
+
+    if (isfile) {
+        luaL_Stream* stream = (luaL_Stream*) ptr;
+        return stream->f;
+    }
+
+    return ptr;
+}
+
 static int cdata_tointeger(lua_State* L, int idx, ptrdiff_t* val)
 {
     struct ctype ct;
@@ -213,7 +231,7 @@ static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
             if (!ALLOW_POINTERS) {                                          \
                 type_error(L, idx, #TYPE, 0, NULL);                         \
             }                                                               \
-            ret = (TYPE) (intptr_t) p;                                      \
+            ret = (TYPE) (intptr_t) userdata_toptr(L, idx);                 \
         } else if (ct.pointers || ct.type == STRUCT_TYPE || ct.type == UNION_TYPE) {\
             if (!ALLOW_POINTERS) {                                          \
                 type_error(L, idx, #TYPE, 0, NULL);                         \
@@ -346,15 +364,13 @@ static size_t unpack_vararg(lua_State* L, int i, char* to)
 
     case LUA_TUSERDATA:
         p = to_cdata(L, i, &ct);
-
-        if (ct.type == INVALID_TYPE) {
-            *(void**) to = p;
-            return sizeof(void*);
-        }
-
         lua_pop(L, 1);
 
-        if (ct.pointers || ct.type == INTPTR_TYPE) {
+        if (ct.type == INVALID_TYPE) {
+            *(void**) to = userdata_toptr(L, i);
+            return sizeof(void*);
+
+        } else if (ct.pointers || ct.type == INTPTR_TYPE) {
             *(void**) to = p;
             return sizeof(void*);
 
@@ -530,7 +546,7 @@ static void* check_pointer(lua_State* L, int idx, struct ctype* ct)
             /* some other type of user data */
             ct->type = VOID_TYPE;
             ct->pointers = 1;
-            return lua_touserdata(L, idx);
+            return userdata_toptr(L, idx);
         } else if (ct->type == STRUCT_TYPE || ct->type == UNION_TYPE) {
             return p;
         } else {
