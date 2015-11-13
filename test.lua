@@ -10,7 +10,7 @@ io.stdout:setvbuf('no')
 local ffi = require 'ffi'
 local dlls = {}
 
-dlls.__cdecl = ffi.load('test_cdecl')
+dlls.__cdecl = ffi.load(package.searchpath('ffi.libtest', package.cpath))
 
 if ffi.arch == 'x86' and ffi.os == 'Windows' then
     dlls.__stdcall = ffi.load('test_stdcall')

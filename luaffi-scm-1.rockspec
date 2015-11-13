@@ -20,13 +20,15 @@ dependencies = {
 build = {
    type = "builtin",
    modules = {
-      ffi = {
+      ['ffi'] = {
          incdirs = {
             "dynasm"
          },
          sources = {
             "call.c", "ctype.c", "ffi.c", "parser.c",
          }
-      }
+      },
+      ['ffi.libtest'] = 'test.c',
+      ['ffi.test'] = 'test.lua',
    }
 }
