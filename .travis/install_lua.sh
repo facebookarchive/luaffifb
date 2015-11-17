@@ -18,7 +18,7 @@ mkdir -p "$PREFIX"
 mkdir -p "$TMPSRC"
 
 if [ "$LUA_VERSION" == "LUA51" ]; then
-    URL="http://www.lua.org/ftp/lua-5.2.4.tar.gz"
+    URL="http://www.lua.org/ftp/lua-5.1.5.tar.gz"
 elif [ "$LUA_VERSION" == "LUA52" ]; then
     URL="http://www.lua.org/ftp/lua-5.2.4.tar.gz"
 elif [ "$LUA_VERSION" == "LUA53" ]; then
