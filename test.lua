@@ -10,7 +10,22 @@ io.stdout:setvbuf('no')
 local ffi = require 'ffi'
 local dlls = {}
 
-dlls.__cdecl = ffi.load(package.searchpath('ffi.libtest', package.cpath))
+local function loadlib(lib)
+    for pattern in package.cpath:gmatch('[^;]+') do
+        local path = pattern:gsub('?', lib)
+        local ok, lib = pcall(ffi.load, path)
+        if ok then
+            return lib
+        end
+    end
+    error("Unable to load", lib)
+end
+
+if _VERSION == 'Lua 5.1' then
+    dlls.__cdecl = loadlib('ffi/libtest')
+else
+    dlls.__cdecl = ffi.load(package.searchpath('ffi.libtest', package.cpath))
+end
 
 if ffi.arch == 'x86' and ffi.os == 'Windows' then
     dlls.__stdcall = ffi.load('test_stdcall')
@@ -855,11 +870,13 @@ assert(v.a == 1 and v.b == 2 and v.c == 3)
 local tp = ffi.metatype("struct newtest",
   {__pairs = function(tp) return tp.a, tp.b end, __ipairs = function(tp) return tp.b, tp.c end}
 )
-local v = tp(1, 2, 3)
-x, y = pairs(v)
-assert(x == 1 and y == 2)
-x, y = ipairs(v)
-assert(x == 2 and y == 3)
+if _VERSION ~= 'Lua 5.1' then
+    local v = tp(1, 2, 3)
+    x, y = pairs(v)
+    assert(x == 1 and y == 2)
+    x, y = ipairs(v)
+    assert(x == 2 and y == 3)
+end
 
 -- test for pointer to struct having same metamethods
 local st = ffi.cdef "struct ptest {int a, b;};"

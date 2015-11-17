@@ -23,11 +23,13 @@
 extern "C" {
 # include <lua.h>
 # include <lauxlib.h>
+# include <lualib.h>
 }
 # define EXTERN_C extern "C"
 #else
 # include <lua.h>
 # include <lauxlib.h>
+# include <lualib.h>
 # define EXTERN_C extern
 #endif
 

@@ -110,8 +110,13 @@ static void* userdata_toptr(lua_State* L, int idx)
     lua_pop(L, 2);
 
     if (isfile) {
+#if LUA_VERSION_NUM == 501
+        FILE** stream = (FILE**) ptr;
+        return *stream;
+#else
         luaL_Stream* stream = (luaL_Stream*) ptr;
         return stream->f;
+#endif
     }
 
     return ptr;
