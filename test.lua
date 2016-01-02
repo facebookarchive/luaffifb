@@ -32,11 +32,11 @@ if ffi.arch == 'x86' and ffi.os == 'Windows' then
     dlls.__fastcall = ffi.load('test_fastcall')
 end
 
-local function check(a, b)
+local function check(a, b, msg)
     if a ~= b then
         print('check', a, b)
     end
-    return _G.assert(a == b)
+    return _G.assert(a == b, msg)
 end
 
 print('Running test')
@@ -300,8 +300,8 @@ local test_values = {
     uint64_t = 12345678901234,
     bool = true,
     _Bool = false,
-    ['float complex'] = 3+4*i,
-    ['double complex'] = 5+6*i,
+    ['float complex'] = 3.1+4.2*i,
+    ['double complex'] = 5.1+6.2*i,
     ['enum e8'] = ffi.C.FOO8,
     ['enum e16'] = ffi.C.FOO16,
     ['enum e32'] = ffi.C.FOO32,
@@ -324,10 +324,10 @@ local types = {
 
 local buf = ffi.new('char[256]')
 
-local function checkbuf(type, ret)
+local function checkbuf(type, ret, msg)
     local str = tostring(test_values[type]):gsub('^cdata%b<>: ', '')
-    check(ffi.string(buf), str)
-    check(ret, #str)
+    check(ffi.string(buf), str, msg)
+    check(ret, #str, msg)
 end
 
 local function checkalign(type, v, ret)
@@ -444,7 +444,7 @@ for convention,c in pairs(dlls) do
     for suffix, type in pairs(types) do
         local test = test_values[type]
         --print('checkbuf', suffix, type, buf, test)
-        checkbuf(type, c['print_' .. suffix](buf, test))
+        checkbuf(type, c['print_' .. suffix](buf, test), suffix)
 
         if first then
             ffi.cdef(align:gsub('SUFFIX', suffix):gsub('TYPE', type):gsub('ALIGN', 0))
@@ -737,9 +737,9 @@ if _VERSION ~= 'Lua 5.1' then
     check(#vls, 5)
 end
 
-check(tostring(1+3*i), '1+3i')
-check(tostring((1+3*i)*(2+4*i)), '-10+10i')
-check(tostring((3+2*i)*(3-2*i)), '13+0i')
+check(tostring(1.1+3.2*i), '1.1+3.2i')
+check((1+3*i)*(2+4*i), -10+10*i)
+check((3+2*i)*(3-2*i), 13+0*i)
 
 -- Should ignore unknown attributes
 ffi.cdef [[

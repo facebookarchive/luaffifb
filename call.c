@@ -14,10 +14,10 @@ static void* reserve_code(struct jit* jit, lua_State* L, size_t sz);
 static void commit_code(struct jit* jit, void* p, size_t sz);
 
 static void push_int(lua_State* L, int val)
-{ lua_pushnumber(L, val); }
+{ lua_pushinteger(L, val); }
 
 static void push_uint(lua_State* L, unsigned int val)
-{ lua_pushnumber(L, val); }
+{ lua_pushinteger(L, val); }
 
 static void push_float(lua_State* L, float val)
 { lua_pushnumber(L, val); }

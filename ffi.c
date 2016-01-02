@@ -967,7 +967,7 @@ static void set_struct(lua_State* L, int idx, void* to, int to_usr, const struct
             sz = lua_rawlen(L, to_usr);
 
             for (i = 2; i < sz; i++) {
-                lua_pushnumber(L, i);
+                lua_pushinteger(L, i);
                 off = get_member(L, to_usr, tt, &mt);
                 assert(off >= 0);
                 set_value(L, -2, (char*) to + off, -1, &mt, check_pointers);
@@ -1329,7 +1329,7 @@ static int ffi_sizeof(lua_State* L)
     struct ctype ct;
     check_ctype(L, 1, &ct);
     get_variable_array_size(L, 2, &ct);
-    lua_pushnumber(L, ctype_size(L, &ct));
+    lua_pushinteger(L, ctype_size(L, &ct));
     return 1;
 }
 
@@ -1341,7 +1341,7 @@ static int ffi_alignof(lua_State* L)
 
     /* if no member is specified then we return the alignment of the type */
     if (lua_isnil(L, 2)) {
-        lua_pushnumber(L, ct.align_mask + 1);
+        lua_pushinteger(L, ct.align_mask + 1);
         return 1;
     }
 
@@ -1352,7 +1352,7 @@ static int ffi_alignof(lua_State* L)
         return luaL_error(L, "type %s has no member %s", lua_tostring(L, -1), lua_tostring(L, 2));
     }
 
-    lua_pushnumber(L, mt.align_mask + 1);
+    lua_pushinteger(L, mt.align_mask + 1);
     return 1;
 }
 
@@ -1370,14 +1370,14 @@ static int ffi_offsetof(lua_State* L)
         return luaL_error(L, "type %s has no member %s", lua_tostring(L, -1), lua_tostring(L, 2));
     }
 
-    lua_pushnumber(L, off);
+    lua_pushinteger(L, off);
 
     if (!mt.is_bitfield) {
         return 1;
     }
 
-    lua_pushnumber(L, mt.bit_offset);
-    lua_pushnumber(L, mt.bit_size);
+    lua_pushinteger(L, mt.bit_offset);
+    lua_pushinteger(L, mt.bit_size);
     return 3;
 }
 
@@ -1568,6 +1568,9 @@ static int ffi_metatype(lua_State* L)
 int push_user_mt(lua_State* L, int ct_usr, const struct ctype* ct)
 {
     if (ct->type != STRUCT_TYPE && ct->type != UNION_TYPE && !IS_COMPLEX(ct->type)) {
+        return 0;
+    }
+    if (!lua_istable(L, ct_usr)) {
         return 0;
     }
 
@@ -1807,7 +1810,7 @@ err:
             uint64_t val = *(uint64_t*) data;
             val >>= ct.bit_offset;
             val &= (UINT64_C(1) << ct.bit_size) - 1;
-            lua_pushnumber(L, val);
+            lua_pushinteger(L, val);
             return 1;
         }
 
@@ -1861,14 +1864,14 @@ err:
             lua_pushboolean(L, *(_Bool*) data);
             break;
         case INT8_TYPE:
-            lua_pushnumber(L, ct.is_unsigned ? (lua_Number) *(uint8_t*) data : (lua_Number) *(int8_t*) data);
+            lua_pushinteger(L, ct.is_unsigned ? (lua_Integer) *(uint8_t*) data : (lua_Integer) *(int8_t*) data);
             break;
         case INT16_TYPE:
-            lua_pushnumber(L, ct.is_unsigned ? (lua_Number) *(uint16_t*) data : (lua_Number) *(int16_t*) data);
+            lua_pushinteger(L, ct.is_unsigned ? (lua_Integer) *(uint16_t*) data : (lua_Integer) *(int16_t*) data);
             break;
         case ENUM_TYPE:
         case INT32_TYPE:
-            lua_pushnumber(L, ct.is_unsigned ? (lua_Number) *(uint32_t*) data : (lua_Number) *(int32_t*) data);
+            lua_pushinteger(L, ct.is_unsigned ? (lua_Integer) *(uint32_t*) data : (lua_Integer) *(int32_t*) data);
             break;
         case INT64_TYPE:
             to = push_cdata(L, -1, &ct);
@@ -2592,10 +2595,10 @@ static int ffi_errno(lua_State* L)
     struct jit* jit = get_jit(L);
 
     if (!lua_isnoneornil(L, 1)) {
-        lua_pushnumber(L, jit->last_errno);
+        lua_pushinteger(L, jit->last_errno);
         jit->last_errno = luaL_checknumber(L, 1);
     } else {
-        lua_pushnumber(L, jit->last_errno);
+        lua_pushinteger(L, jit->last_errno);
     }
 
     return 1;
@@ -2625,7 +2628,7 @@ static int ffi_number(lua_State* L)
     void* data = to_cdata(L, 1, &ct);
 
     if (ct.type != INVALID_TYPE) {
-        lua_pushnumber(L, check_intptr(L, 1, data, &ct));
+        lua_pushinteger(L, check_intptr(L, 1, data, &ct));
         return 1;
     } else {
         /* call the old _G.tonumber, we use an upvalue as _G.tonumber is set
@@ -2939,16 +2942,16 @@ static int cmodule_index(lua_State* L)
         return 1;
 
     case INT8_TYPE:
-        lua_pushnumber(L, ct.is_unsigned ? (lua_Number) *(uint8_t*) sym : (lua_Number) *(int8_t*) sym);
+        lua_pushinteger(L, ct.is_unsigned ? (lua_Integer) *(uint8_t*) sym : (lua_Integer) *(int8_t*) sym);
         return 1;
 
     case INT16_TYPE:
-        lua_pushnumber(L, ct.is_unsigned ? (lua_Number) *(uint16_t*) sym : (lua_Number) *(int16_t*) sym);
+        lua_pushinteger(L, ct.is_unsigned ? (lua_Integer) *(uint16_t*) sym : (lua_Integer) *(int16_t*) sym);
         return 1;
 
     case INT32_TYPE:
     case ENUM_TYPE:
-        lua_pushnumber(L, ct.is_unsigned ? (lua_Number) *(uint32_t*) sym : (lua_Number) *(int32_t*) sym);
+        lua_pushinteger(L, ct.is_unsigned ? (lua_Integer) *(uint32_t*) sym : (lua_Integer) *(int32_t*) sym);
         return 1;
     }
 

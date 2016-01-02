@@ -13,6 +13,7 @@ os:
 env:
   - LUA_VERSION=LUA51
   - LUA_VERSION=LUA52
+  - LUA_VERSION=LUA53
 
 before_install:
   - export PATH="$TRAVIS_BUILD_DIR/install/bin:$PATH"

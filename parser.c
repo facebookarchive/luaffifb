@@ -295,14 +295,14 @@ static int parse_enum(lua_State* L, struct parser* P, struct ctype* type)
         /* add the enum value to the constants table */
         push_upval(L, &constants_key);
         lua_pushvalue(L, -2);
-        lua_pushnumber(L, value);
+        lua_pushinteger(L, value);
         lua_rawset(L, -3);
         lua_pop(L, 1);
 
         assert(lua_gettop(L) == ct_usr + 1);
 
         /* add the enum value to the enum usr value table */
-        lua_pushnumber(L, value);
+        lua_pushinteger(L, value);
         lua_rawset(L, ct_usr);
 
         if (tok.type == TOK_CLOSE_CURLY) {
@@ -2110,9 +2110,9 @@ static int parse_root(lua_State* L, struct parser* P)
                 case INT16_TYPE:
                 case INT32_TYPE:
                     if (at.is_unsigned)
-                        lua_pushnumber(L, (unsigned int) val);
+                        lua_pushinteger(L, (unsigned int) val);
                     else
-                        lua_pushnumber(L, (int) val);
+                        lua_pushinteger(L, (int) val);
                     break;
 
                 default:
