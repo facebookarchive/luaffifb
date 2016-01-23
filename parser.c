@@ -11,6 +11,7 @@
 #define IS_CONST(tok) (IS_LITERAL(tok, "const") || IS_LITERAL(tok, "__const") || IS_LITERAL(tok, "__const__"))
 #define IS_VOLATILE(tok) (IS_LITERAL(tok, "volatile") || IS_LITERAL(tok, "__volatile") || IS_LITERAL(tok, "__volatile__"))
 #define IS_RESTRICT(tok) (IS_LITERAL(tok, "restrict") || IS_LITERAL(tok, "__restrict") || IS_LITERAL(tok, "__restrict__"))
+#define IS_INLINE(tok) (IS_LITERAL(tok, "inline") || IS_LITERAL(tok, "__inline") || IS_LITERAL(tok, "__inline__"))
 
 enum etoken {
     TOK_NIL,
@@ -1185,11 +1186,6 @@ int parse_type(lua_State* L, struct parser* P, struct ctype* ct)
 
     require_token(L, P, &tok);
 
-    /* get function attributes before the return type */
-    while (parse_attribute(L, P, &tok, ct, NULL)) {
-        require_token(L, P, &tok);
-    }
-
     /* get const/volatile before the base type */
     for (;;) {
         if (tok.type != TOK_TOKEN) {
@@ -1199,8 +1195,14 @@ int parse_type(lua_State* L, struct parser* P, struct ctype* ct)
             ct->const_mask = 1;
             require_token(L, P, &tok);
 
-        } else if (IS_VOLATILE(tok) || IS_RESTRICT(tok)) {
+        } else if (IS_VOLATILE(tok) ||
+                   IS_RESTRICT(tok) ||
+                   IS_LITERAL(tok, "static") ||
+                   IS_INLINE(tok)) {
             /* ignored for now */
+            require_token(L, P, &tok);
+        } else if (parse_attribute(L, P, &tok, ct, NULL)) {
+            /* get function attributes before the return type */
             require_token(L, P, &tok);
 
         } else {
@@ -2005,6 +2007,36 @@ static void push_strings(lua_State* L, struct parser* P)
     luaL_pushresult(&B);
 }
 
+static void parse_constant_assignemnt(lua_State* L,
+                                      struct parser* P,
+                                      const struct ctype* type,
+                                      const struct token* name)
+{
+    int64_t val = calculate_constant(L, P);
+
+    check_token(L, P, TOK_SEMICOLON, "", "expected ; after constant definition on line %d", P->line);
+
+    push_upval(L, &constants_key);
+    lua_pushlstring(L, name->str, name->size);
+
+    switch (type->type) {
+        case INT8_TYPE:
+        case INT16_TYPE:
+        case INT32_TYPE:
+            if (type->is_unsigned)
+                lua_pushinteger(L, (unsigned int) val);
+            else
+                lua_pushinteger(L, (int) val);
+            break;
+
+        default:
+            luaL_error(L, "expected a valid 8-, 16-, or 32-bit signed or unsigned integer type after 'static const' on line %d", P->line);
+    }
+
+    lua_rawset(L, -3);
+    lua_pop(L, 2); /*constants and type*/
+}
+
 #define END 0
 #define PRAGMA_POP 1
 
@@ -2080,48 +2112,6 @@ static int parse_root(lua_State* L, struct parser* P)
         } else if (IS_LITERAL(tok, "typedef")) {
             parse_typedef(L, P);
 
-        } else if (IS_LITERAL(tok, "static")) {
-            struct ctype at;
-
-            int64_t val;
-            require_token(L, P, &tok);
-            if (!IS_CONST(tok)) {
-                luaL_error(L, "expected 'static const int' on line %d", P->line);
-            }
-
-            parse_type(L, P, &at);
-
-            require_token(L, P, &tok);
-            if (tok.type != TOK_TOKEN) {
-                luaL_error(L, "expected constant name after 'static const int' on line %d", P->line);
-            }
-
-            check_token(L, P, TOK_ASSIGN, "", "expected = after 'static const int <name>' on line %d", P->line);
-
-            val = calculate_constant(L, P);
-
-            check_token(L, P, TOK_SEMICOLON, "", "expected ; after 'static const int' definition on line %d", P->line);
-
-            push_upval(L, &constants_key);
-            lua_pushlstring(L, tok.str, tok.size);
-
-            switch (at.type) {
-                case INT8_TYPE:
-                case INT16_TYPE:
-                case INT32_TYPE:
-                    if (at.is_unsigned)
-                        lua_pushinteger(L, (unsigned int) val);
-                    else
-                        lua_pushinteger(L, (int) val);
-                    break;
-
-                default:
-                    luaL_error(L, "expected a valid 8-, 16-, or 32-bit signed or unsigned integer type after 'static const' on line %d", P->line);
-            }
-
-            lua_rawset(L, -3);
-            lua_pop(L, 2); /*constants and type*/
-
         } else {
             /* type declaration, type definition, or function declaration */
             struct ctype type;
@@ -2164,11 +2154,29 @@ static int parse_root(lua_State* L, struct parser* P)
                     break;
                 }
 
-                if (tok.type == TOK_SEMICOLON) {
-                    break;
-                } else if (tok.type != TOK_COMMA) {
+                if (tok.type == TOK_COMMA) {
+                    continue;
+                }
+
+                if (tok.type == TOK_OPEN_CURLY) {
+                    int line = P->line;
+                    int remaining = 1;
+                    while (remaining > 0 && next_token(L, P, &tok)) {
+                        if (tok.type == TOK_CLOSE_CURLY) {
+                            remaining--;
+                        } else if (tok.type == TOK_OPEN_CURLY) {
+                            remaining++;
+                        }
+                    }
+                    if (remaining > 0) {
+                        luaL_error(L, "missing closing bracket for line %d", line);
+                    }
+                } else if (tok.type == TOK_ASSIGN) {
+                    parse_constant_assignemnt(L, P, &type, &name);
+                } else if (tok.type != TOK_SEMICOLON) {
                     luaL_error(L, "missing semicolon on line %d", P->line);
                 }
+                break;
             }
 
             lua_pop(L, 1);
