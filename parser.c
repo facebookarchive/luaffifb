@@ -1122,7 +1122,7 @@ static int parse_attribute(lua_State* L, struct parser* P, struct token* tok, st
                         ct->align_mask = ALIGNOF(a32);
 
                     } else if (IS_LITERAL(*tok, "DI") || IS_LITERAL(*tok, "__DI__")
-#if defined ARCH_X64
+#if defined ARCH_X64 || defined ARCH_PPC64
                             || IS_LITERAL(*tok, "word") || IS_LITERAL(*tok, "__word__")
                             || IS_LITERAL(*tok, "pointer") || IS_LITERAL(*tok, "__pointer__")
 #endif
