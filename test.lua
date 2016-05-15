@@ -22,7 +22,11 @@ local function loadlib(lib)
 end
 
 if _VERSION == 'Lua 5.1' then
-    dlls.__cdecl = loadlib('ffi/libtest')
+	if ffi.os == 'Windows' then
+		dlls.__cdecl = loadlib('test_cdecl')
+	else
+		dlls.__cdecl = loadlib('ffi/libtest')
+	end
 else
     dlls.__cdecl = ffi.load(package.searchpath('ffi.libtest', package.cpath))
 end
@@ -901,31 +905,40 @@ void test_call_pppppiifiii(void* p1, void* p2, void* p3, void* p4, void* p5, int
 void test_call_pppppiiifii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, float i4, int i5, int i6);
 ]]
 
-ffi.C.test_call_echo("input")
-assert(ffi.C.buf == "input")
+dlls.__cdecl.test_call_echo("input")
+assert(dlls.__cdecl.buf == "input")
 
 local function ptr(x) return ffi.new('void*', x) end
 
-ffi.C.test_call_pppppii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7)
-assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7")
+local pbuf = ffi.new("char[80]")
 
-ffi.C.test_call_pppppiiiiii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8, 9, 10, 11)
-assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8 9 10 11")
+ffi.C.sprintf(pbuf, "%p %p %p %p %p", ptr(1), ptr(2), ptr(3), ptr(4), ptr(5))
 
-ffi.C.test_call_pppppffffff(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6.5, 7.5, 8.5, 9.5, 10.5, 11.5)
-assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6.5 7.5 8.5 9.5 10.5 11.5")
+local prefix = ffi.string(pbuf)
 
-ffi.C.test_call_pppppiifiii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8.5, 9, 10, 11)
-assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8.5 9 10 11")
+dlls.__cdecl.test_call_pppppii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7)
 
-ffi.C.test_call_pppppiiifii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8, 9.5, 10, 11)
-assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8 9.5 10 11")
+assert(dlls.__cdecl.buf == prefix .. " 6 7")
 
-local sum = ffi.C.add_dc(ffi.new('complex', 1, 2), ffi.new('complex', 3, 5))
+dlls.__cdecl.test_call_pppppiiiiii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8, 9, 10, 11)
+assert(dlls.__cdecl.buf == prefix .. " 6 7 8 9 10 11")
+
+dlls.__cdecl.test_call_pppppffffff(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6.5, 7.5, 8.5, 9.5, 10.5, 11.5)
+assert(dlls.__cdecl.buf == prefix .. " 6.5 7.5 8.5 9.5 10.5 11.5")
+
+dlls.__cdecl.test_call_pppppiifiii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8.5, 9, 10, 11)
+assert(dlls.__cdecl.buf == prefix .. " 6 7 8.5 9 10 11")
+
+dlls.__cdecl.test_call_pppppiiifii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8, 9.5, 10, 11)
+assert(dlls.__cdecl.buf == prefix .. " 6 7 8 9.5 10 11")
+
+if dlls.__cdecl.have_complex() then
+local sum = dlls.__cdecl.add_dc(ffi.new('complex', 1, 2), ffi.new('complex', 3, 5))
 assert(ffi.istype('complex', sum))
 
-sum = ffi.C.add_fc(ffi.new('complex float', 1, 2), ffi.new('complex float', 3, 5))
+sum = dlls.__cdecl.add_fc(ffi.new('complex float', 1, 2), ffi.new('complex float', 3, 5))
 assert(ffi.istype('complex float', sum))
+end
 
 ffi.cdef [[
 struct Arrays {
