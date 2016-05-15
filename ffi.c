@@ -2982,6 +2982,19 @@ static int cmodule_newindex(lua_State* L)
     return 0;
 }
 
+static int cmodule_gc(lua_State* L)
+{
+    void * lib = *(void **)lua_touserdata(L, 1);
+   
+#ifdef _WIN32
+    FreeLibrary((HANDLE)lib);
+#else
+    dlclose(lib);
+#endif
+    
+    return 0;
+}
+
 static int jit_gc(lua_State* L)
 {
     size_t i;
@@ -3100,6 +3113,7 @@ static const luaL_Reg ctype_mt[] = {
 static const luaL_Reg cmodule_mt[] = {
     {"__index", &cmodule_index},
     {"__newindex", &cmodule_newindex},
+    {"__gc", &cmodule_gc},
     {NULL, NULL}
 };
 
