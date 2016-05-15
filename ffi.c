@@ -143,7 +143,7 @@ static int cdata_tointeger(lua_State* L, int idx, ptrdiff_t* val)
         *val = *(int32_t*)addr;
         return 1;
     case INT64_TYPE:
-        *val = *(int64_t*)addr;
+        *val = (ptrdiff_t)*(int64_t*)addr;
         return 1;
     default:
         return 0;
@@ -158,7 +158,7 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
         ct->base_size = 8;
         ct->type = INT64_TYPE;
         ct->is_defined = 1;
-        ret = luaL_checknumber(L, idx);
+        ret = (int64_t)luaL_checknumber(L, idx);
         return ret;
 
     } else if (ct->pointers) {
@@ -251,7 +251,7 @@ static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
         } else if (ct.type == FLOAT_TYPE) {                                 \
             ret = (TYPE) *(float*) p;                                       \
         } else {                                                            \
-            ret = check_intptr(L, idx, p, &ct);                             \
+            ret = (TYPE)check_intptr(L, idx, p, &ct);                       \
         }                                                                   \
         lua_pop(L, 1);                                                      \
         break;                                                              \
@@ -286,7 +286,7 @@ double check_double(lua_State* L, int idx)
 { TO_NUMBER(double, 0); return ret; }
 
 float check_float(lua_State* L, int idx)
-{ TO_NUMBER(double, 0); return ret; }
+{ TO_NUMBER(double, 0); return (float)ret; }
 
 uintptr_t check_uintptr(lua_State* L, int idx)
 { TO_NUMBER(uintptr_t, 1); return ret; }
@@ -327,7 +327,7 @@ complex_double check_complex_double(lua_State* L, int idx)
         } else if (ct.type == FLOAT_TYPE) {
             real = *(float*) p;
         } else {
-            real = check_intptr(L, idx, p, &ct);
+            real = (double)check_intptr(L, idx, p, &ct);
         }
         lua_pop(L, 1);
         break;
@@ -1810,7 +1810,7 @@ err:
             uint64_t val = *(uint64_t*) data;
             val >>= ct.bit_offset;
             val &= (UINT64_C(1) << ct.bit_size) - 1;
-            lua_pushinteger(L, val);
+            lua_pushinteger(L, (lua_Integer)val);
             return 1;
         }
 
@@ -1979,7 +1979,7 @@ static void push_number(lua_State* L, int64_t val, int ct_usr, const struct ctyp
 {
     if ((ct->pointers || ct->type == INTPTR_TYPE) && sizeof(intptr_t) != sizeof(int64_t)) {
         intptr_t* p = (intptr_t*) push_cdata(L, ct_usr, ct);
-        *p = val;
+        *p = (intptr_t)val;
     } else {
         int64_t* p = (int64_t*) push_cdata(L, ct_usr, ct);
         *p = val;
@@ -2312,7 +2312,7 @@ static int cdata_sub(lua_State* L)
 #define MUL(l,r,s) s = l * r
 #define DIV(l,r,s) s = l / r
 #define MOD(l,r,s) s = l % r
-#define POW(l,r,s) s = pow(l, r)
+#define POW(l,r,s) s = (int64_t)pow((double)l, (double)r)
 
 #ifdef HAVE_COMPLEX
 #define MULC(l,r,s) s = l * r
@@ -2596,7 +2596,7 @@ static int ffi_errno(lua_State* L)
 
     if (!lua_isnoneornil(L, 1)) {
         lua_pushinteger(L, jit->last_errno);
-        jit->last_errno = luaL_checknumber(L, 1);
+        jit->last_errno = (int32_t)luaL_checknumber(L, 1);
     } else {
         lua_pushinteger(L, jit->last_errno);
     }
@@ -2628,7 +2628,7 @@ static int ffi_number(lua_State* L)
     void* data = to_cdata(L, 1, &ct);
 
     if (ct.type != INVALID_TYPE) {
-        lua_pushinteger(L, check_intptr(L, 1, data, &ct));
+        lua_pushinteger(L, (lua_Integer)check_intptr(L, 1, data, &ct));
         return 1;
     } else {
         /* call the old _G.tonumber, we use an upvalue as _G.tonumber is set
