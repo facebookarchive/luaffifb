@@ -3388,21 +3388,21 @@ static int setup_upvals(lua_State* L)
 #if defined ARCH_X86 || defined ARCH_ARM
     lua_pushboolean(L, 1);
     lua_setfield(L, -2, "32bit");
-#elif defined ARCH_X64
+#elif defined ARCH_X64 || defined ARCH_PPC64
     lua_pushboolean(L, 1);
     lua_setfield(L, -2, "64bit");
 #else
 #error
 #endif
 
-#if defined ARCH_X86 || defined ARCH_X64 || defined ARCH_ARM
+#if defined ARCH_X86 || defined ARCH_X64 || defined ARCH_ARM || defined ARCH_PPC64
     lua_pushboolean(L, 1);
     lua_setfield(L, -2, "le");
 #else
 #error
 #endif
 
-#if defined ARCH_X86 || defined ARCH_X64
+#if defined ARCH_X86 || defined ARCH_X64 || defined ARCH_PPC64
     lua_pushboolean(L, 1);
     lua_setfield(L, -2, "fpu");
 #elif defined ARCH_ARM
@@ -3449,6 +3449,8 @@ static int setup_upvals(lua_State* L)
     lua_pushliteral(L, "x64");
 #elif defined ARCH_ARM
     lua_pushliteral(L, "arm");
+#elif defined ARCH_PPC64
+    lua_pushliteral(L, "ppc64");
 #else
 # error
 #endif
