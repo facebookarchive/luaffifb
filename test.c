@@ -17,10 +17,9 @@
 #include <windows.h>
 #else
 #include <errno.h>
-#endif
-
 #include <complex.h>
 #define HAVE_COMPLEX
+#endif
 
 #ifdef __cplusplus
 # define EXTERN_C extern "C"
@@ -29,7 +28,7 @@
 #endif
 
 #ifdef _WIN32
-#define EXPORT EXTERN_C __declspec(dllexport)
+#define EXPORT /*EXTERN_C*/ __declspec(dllexport) // <- doesn't seem quite right, but I think extern was giving me issues
 #elif defined __GNUC__
 #define EXPORT EXTERN_C __attribute__((visibility("default")))
 #else
