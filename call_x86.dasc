@@ -312,6 +312,22 @@ void compile_globals(struct jit* jit, lua_State* L)
     | call_rr extern push_uint, L_ARG, rax
     | jmp ->lua_return_arg
 
+#if LUA_VERSION_NUM == 503
+    |->lua_return_long:
+    | mov [rsp+32], rax
+    | get_errno
+    | mov rax, [rsp+32]
+    | call_rr extern lua_pushinteger, L_ARG, rax
+    | jmp ->lua_return_arg
+
+    |->lua_return_ulong:
+    | mov [rsp+32], rax
+    | get_errno
+    | mov rax, [rsp+32]
+    | call_rr extern lua_pushinteger, L_ARG, rax
+    | jmp ->lua_return_arg
+#endif
+
     |->too_few_arguments:
     | mov ax, 0
     | call_rp extern luaL_error, L_ARG, &"too few arguments"
@@ -1452,6 +1468,14 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             break;
 
         case INT64_TYPE:
+#if LUA_VERSION_NUM == 503
+            lua_pop(L, 1);
+            if (mbr_ct->is_unsigned) {
+                | jmp ->lua_return_ulong
+            } else {
+                | jmp ->lua_return_long
+            }
+#else
             num_upvals++;
             | // save the return value
             |.if X64
@@ -1476,6 +1500,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             |.endif
             |
             | jmp ->lua_return_arg
+#endif
             break;
 
         case COMPLEX_FLOAT_TYPE:
