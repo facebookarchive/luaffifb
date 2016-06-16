@@ -190,7 +190,7 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
 
 static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
 
-#define TO_NUMBER(TYPE, ALLOW_POINTERS)                                     \
+#define TO_NUMBER(TYPE, ALLOW_POINTERS, LUA_TONUMBER)                       \
     TYPE ret = 0;                                                           \
     void* p;                                                                \
     struct ctype ct;                                                        \
@@ -202,7 +202,7 @@ static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
         break;                                                              \
                                                                             \
     case LUA_TNUMBER:                                                       \
-        ret = (TYPE) lua_tonumber(L, idx);                                  \
+        ret = (TYPE) LUA_TONUMBER(L, idx);                                  \
         break;                                                              \
                                                                             \
     case LUA_TSTRING:                                                       \
@@ -265,10 +265,10 @@ static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
     }                                                                       \
 
 static int64_t cast_int64(lua_State* L, int idx, int is_cast)
-{ TO_NUMBER(int64_t, is_cast); return ret; }
+{ TO_NUMBER(int64_t, is_cast, lua_tointeger); return ret; }
 
 static uint64_t cast_uint64(lua_State* L, int idx, int is_cast)
-{ TO_NUMBER(uint64_t, is_cast); return ret; }
+{ TO_NUMBER(uint64_t, is_cast, lua_tointeger); return ret; }
 
 int32_t check_int32(lua_State* L, int idx)
 { return (int32_t) cast_int64(L, idx, 0); }
@@ -283,13 +283,13 @@ uint64_t check_uint64(lua_State* L, int idx)
 { return cast_uint64(L, idx, 0); }
 
 double check_double(lua_State* L, int idx)
-{ TO_NUMBER(double, 0); return ret; }
+{ TO_NUMBER(double, 0, lua_tonumber); return ret; }
 
 float check_float(lua_State* L, int idx)
-{ TO_NUMBER(double, 0); return ret; }
+{ TO_NUMBER(double, 0, lua_tonumber); return ret; }
 
 uintptr_t check_uintptr(lua_State* L, int idx)
-{ TO_NUMBER(uintptr_t, 1); return ret; }
+{ TO_NUMBER(uintptr_t, 1, lua_tointeger); return ret; }
 
 complex_double check_complex_double(lua_State* L, int idx)
 {
@@ -356,7 +356,7 @@ static size_t unpack_vararg(lua_State* L, int i, char* to)
         return sizeof(int);
 
     case LUA_TNUMBER:
-        *(double*) to = lua_tonumber(L, i);
+        *(double*) to = lua_tonumber(L, i); // TODO in Lua 5.3: lua_tointeger sometimes should be here
         return sizeof(double);
 
     case LUA_TSTRING:
@@ -526,7 +526,7 @@ static void* check_pointer(lua_State* L, int idx, struct ctype* ct)
         ct->is_unsigned = 1;
         ct->pointers = 0;
         lua_pushnil(L);
-        return (void*) (uintptr_t) lua_tonumber(L, idx);
+        return (void*) (uintptr_t) lua_tonumber(L, idx); // TODO in Lua 5.3: maybe change to lua_tointeger
 
     case LUA_TLIGHTUSERDATA:
         ct->type = VOID_TYPE;
