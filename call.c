@@ -170,9 +170,7 @@ static void* reserve_code(struct jit* jit, lua_State* L, size_t sz)
         ADDFUNC(NULL, push_cdata);
         ADDFUNC(NULL, push_int);
         ADDFUNC(NULL, push_uint);
-#if LUA_VERSION_NUM == 503
         ADDFUNC(NULL, lua_pushinteger);
-#endif
         ADDFUNC(NULL, push_float);
         ADDFUNC(jit->kernel32_dll, SetLastError);
         ADDFUNC(jit->kernel32_dll, GetLastError);
