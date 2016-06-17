@@ -749,6 +749,32 @@ __attribute__((dllimport)) void __attribute__((__cdecl__)) alEnable( ALenum capa
 
 check(ffi.sizeof('struct {char foo[alignof(uint64_t)];}'), ffi.alignof('uint64_t'))
 
+-- Check native number type for int64_t/uint64_t function args/returns in Lua 5.3
+if _VERSION == "Lua 5.3" then
+    local native_7F = 0x7FFFFFFFFFFFFFFF
+    local cdata_long_7F =  ffi.new("int64_t",  0x7FFFFFFFFFFFFFFF)
+    local cdata_ulong_7F = ffi.new("uint64_t", 0x7FFFFFFFFFFFFFFF)
+    
+    local native_80 = 0x8000000000000000
+    
+    for _, func in ipairs{ffi.C.add_i64, ffi.C.add_u64} do
+        -- 0x7FFFFFFFFFFFFFFF (native)         + 1 == 0x8000000000000000 (native)
+        local res = func(native_7F, 1)
+        assert(type(res) == "number", "native_7F: returned value not a number")
+        assert(res == native_80, "native_7F: math error")
+        
+        -- 0x7FFFFFFFFFFFFFFF (cdata int64_t)  + 1 == 0x8000000000000000 (native)
+        local res = func(cdata_long_7F, 1)
+        assert(type(res) == "number", "cdata_long_7F: returned value not a number")
+        assert(res == native_80, "cdata_long_7F: math error")
+        
+        -- 0x7FFFFFFFFFFFFFFF (cdata uint64_t) + 1 == 0x8000000000000000 (native)
+        local res = func(cdata_ulong_7F, 1)
+        assert(type(res) == "number", "cdata_ulong_7F: returned value not a number")
+        assert(res == native_80, "cdata_ulong_7F: math error")
+    end
+end
+
 -- Long double is not supported yet but it should be parsed
 ffi.cdef('long double foo(long double val);')
 check(tostring(ffi.debug().functions.foo):match('ctype(%b<>)'), '<long double (*)(long double)>')
