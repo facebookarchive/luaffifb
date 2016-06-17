@@ -190,6 +190,8 @@ static int64_t check_intptr(lua_State* L, int idx, void* p, struct ctype* ct)
 
 static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
 
+#if LUA_VERSION_NUM == 503
+
 #define TO_NUMBER(TYPE, ALLOW_POINTERS)                                     \
     TYPE ret = 0;                                                           \
     void* p;                                                                \
@@ -264,11 +266,165 @@ static int get_cfunction_address(lua_State* L, int idx, cfunction* addr);
         type_error(L, idx, #TYPE, 0, NULL);                                 \
     }                                                                       \
 
+#define TO_NUMBER_INT64(TYPE, ALLOW_POINTERS)                               \
+    TYPE ret = 0;                                                           \
+    void* p;                                                                \
+    struct ctype ct;                                                        \
+    cfunction f;                                                            \
+                                                                            \
+    switch (lua_type(L, idx)) {                                             \
+    case LUA_TBOOLEAN:                                                      \
+        ret = (TYPE) lua_toboolean(L, idx);                                 \
+        break;                                                              \
+                                                                            \
+    case LUA_TNUMBER:                                                       \
+        ret = (TYPE) lua_tointeger(L, idx);                                 \
+        break;                                                              \
+                                                                            \
+    case LUA_TSTRING:                                                       \
+        if (!ALLOW_POINTERS) {                                              \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        ret = (TYPE) (intptr_t) lua_tostring(L, idx);                       \
+        break;                                                              \
+                                                                            \
+    case LUA_TLIGHTUSERDATA:                                                \
+        if (!ALLOW_POINTERS) {                                              \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        ret = (TYPE) (intptr_t) lua_topointer(L, idx);                      \
+        break;                                                              \
+                                                                            \
+    case LUA_TFUNCTION:                                                     \
+        if (!ALLOW_POINTERS) {                                              \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        if (!get_cfunction_address(L, idx, &f)) {                           \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        ret = (TYPE) (intptr_t) f;                                          \
+        break;                                                              \
+                                                                            \
+    case LUA_TUSERDATA:                                                     \
+        p = to_cdata(L, idx, &ct);                                          \
+                                                                            \
+        if (ct.type == INVALID_TYPE) {                                      \
+            if (!ALLOW_POINTERS) {                                          \
+                type_error(L, idx, #TYPE, 0, NULL);                         \
+            }                                                               \
+            ret = (TYPE) (intptr_t) userdata_toptr(L, idx);                 \
+        } else if (ct.pointers || ct.type == STRUCT_TYPE || ct.type == UNION_TYPE) {\
+            if (!ALLOW_POINTERS) {                                          \
+                type_error(L, idx, #TYPE, 0, NULL);                         \
+            }                                                               \
+            ret = (TYPE) (intptr_t) p;                                      \
+        } else if (ct.type == COMPLEX_DOUBLE_TYPE) {                        \
+            ret = (TYPE) creal(*(complex_double*) p);                       \
+        } else if (ct.type == COMPLEX_FLOAT_TYPE) {                         \
+            ret = (TYPE) crealf(*(complex_float*) p);                       \
+        } else if (ct.type == DOUBLE_TYPE) {                                \
+            ret = (TYPE) *(double*) p;                                      \
+        } else if (ct.type == FLOAT_TYPE) {                                 \
+            ret = (TYPE) *(float*) p;                                       \
+        } else {                                                            \
+            ret = check_intptr(L, idx, p, &ct);                             \
+        }                                                                   \
+        lua_pop(L, 1);                                                      \
+        break;                                                              \
+                                                                            \
+    case LUA_TNIL:                                                          \
+        ret = (TYPE) 0;                                                     \
+        break;                                                              \
+                                                                            \
+    default:                                                                \
+        type_error(L, idx, #TYPE, 0, NULL);                                 \
+    }                                                                       \
+
+#else
+
+#define TO_NUMBER(TYPE, ALLOW_POINTERS)                                     \
+    TYPE ret = 0;                                                           \
+    void* p;                                                                \
+    struct ctype ct;                                                        \
+    cfunction f;                                                            \
+                                                                            \
+    switch (lua_type(L, idx)) {                                             \
+    case LUA_TBOOLEAN:                                                      \
+        ret = (TYPE) lua_toboolean(L, idx);                                 \
+        break;                                                              \
+                                                                            \
+    case LUA_TNUMBER:                                                       \
+        ret = (TYPE) lua_tonumber(L, idx);                                  \
+        break;                                                              \
+                                                                            \
+    case LUA_TSTRING:                                                       \
+        if (!ALLOW_POINTERS) {                                              \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        ret = (TYPE) (intptr_t) lua_tostring(L, idx);                       \
+        break;                                                              \
+                                                                            \
+    case LUA_TLIGHTUSERDATA:                                                \
+        if (!ALLOW_POINTERS) {                                              \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        ret = (TYPE) (intptr_t) lua_topointer(L, idx);                      \
+        break;                                                              \
+                                                                            \
+    case LUA_TFUNCTION:                                                     \
+        if (!ALLOW_POINTERS) {                                              \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        if (!get_cfunction_address(L, idx, &f)) {                           \
+            type_error(L, idx, #TYPE, 0, NULL);                             \
+        }                                                                   \
+        ret = (TYPE) (intptr_t) f;                                          \
+        break;                                                              \
+                                                                            \
+    case LUA_TUSERDATA:                                                     \
+        p = to_cdata(L, idx, &ct);                                          \
+                                                                            \
+        if (ct.type == INVALID_TYPE) {                                      \
+            if (!ALLOW_POINTERS) {                                          \
+                type_error(L, idx, #TYPE, 0, NULL);                         \
+            }                                                               \
+            ret = (TYPE) (intptr_t) userdata_toptr(L, idx);                 \
+        } else if (ct.pointers || ct.type == STRUCT_TYPE || ct.type == UNION_TYPE) {\
+            if (!ALLOW_POINTERS) {                                          \
+                type_error(L, idx, #TYPE, 0, NULL);                         \
+            }                                                               \
+            ret = (TYPE) (intptr_t) p;                                      \
+        } else if (ct.type == COMPLEX_DOUBLE_TYPE) {                        \
+            ret = (TYPE) creal(*(complex_double*) p);                       \
+        } else if (ct.type == COMPLEX_FLOAT_TYPE) {                         \
+            ret = (TYPE) crealf(*(complex_float*) p);                       \
+        } else if (ct.type == DOUBLE_TYPE) {                                \
+            ret = (TYPE) *(double*) p;                                      \
+        } else if (ct.type == FLOAT_TYPE) {                                 \
+            ret = (TYPE) *(float*) p;                                       \
+        } else {                                                            \
+            ret = check_intptr(L, idx, p, &ct);                             \
+        }                                                                   \
+        lua_pop(L, 1);                                                      \
+        break;                                                              \
+                                                                            \
+    case LUA_TNIL:                                                          \
+        ret = (TYPE) 0;                                                     \
+        break;                                                              \
+                                                                            \
+    default:                                                                \
+        type_error(L, idx, #TYPE, 0, NULL);                                 \
+    }                                                                       \
+
+#define TO_NUMBER_INT64 TO_NUMBER
+
+#endif
+
 static int64_t cast_int64(lua_State* L, int idx, int is_cast)
-{ TO_NUMBER(int64_t, is_cast); return ret; }
+{ TO_NUMBER_INT64(int64_t, is_cast); return ret; }
 
 static uint64_t cast_uint64(lua_State* L, int idx, int is_cast)
-{ TO_NUMBER(uint64_t, is_cast); return ret; }
+{ TO_NUMBER_INT64(uint64_t, is_cast); return ret; }
 
 int32_t check_int32(lua_State* L, int idx)
 { return (int32_t) cast_int64(L, idx, 0); }
@@ -289,7 +445,7 @@ float check_float(lua_State* L, int idx)
 { TO_NUMBER(double, 0); return ret; }
 
 uintptr_t check_uintptr(lua_State* L, int idx)
-{ TO_NUMBER(uintptr_t, 1); return ret; }
+{ TO_NUMBER_INT64(uintptr_t, 1); return ret; }
 
 complex_double check_complex_double(lua_State* L, int idx)
 {
@@ -356,7 +512,7 @@ static size_t unpack_vararg(lua_State* L, int i, char* to)
         return sizeof(int);
 
     case LUA_TNUMBER:
-        *(double*) to = lua_tonumber(L, i);
+        *(double*) to = lua_tonumber(L, i); // TODO in Lua 5.3: lua_tointeger sometimes should be here
         return sizeof(double);
 
     case LUA_TSTRING:
@@ -526,7 +682,7 @@ static void* check_pointer(lua_State* L, int idx, struct ctype* ct)
         ct->is_unsigned = 1;
         ct->pointers = 0;
         lua_pushnil(L);
-        return (void*) (uintptr_t) lua_tonumber(L, idx);
+        return (void*) (uintptr_t) lua_tonumber(L, idx); // TODO in Lua 5.3: maybe change to lua_tointeger
 
     case LUA_TLIGHTUSERDATA:
         ct->type = VOID_TYPE;
