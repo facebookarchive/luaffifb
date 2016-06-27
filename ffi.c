@@ -2990,6 +2990,7 @@ static int jit_gc(lua_State* L)
     for (i = 0; i < jit->pagenum; i++) {
         FreePage(jit->pages[i], jit->pages[i]->size);
     }
+    free(jit->pages);
     free(jit->globals);
     return 0;
 }
