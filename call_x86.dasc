@@ -21,6 +21,14 @@
 |.define RET_L, eax
 |.endif
 
+|.if X64
+|.define L_ARG, r12
+|.define TOP, r13
+|.else
+|.define L_ARG, rdi
+|.define TOP, rsi
+|.endif
+
 |.if X64WIN
 |
 |.macro call_rrrp, func, arg0, arg1, arg2, arg3
@@ -173,6 +181,146 @@
 |
 |.endif
 
+|.macro epilog
+|.if X64
+| mov TOP, [rbp-16]
+| mov L_ARG, [rbp-8]
+|.else
+| mov TOP, [rbp-8]
+| mov L_ARG, [rbp-4]
+|.endif
+| mov rsp, rbp
+| pop rbp
+| ret
+|.endmacro
+
+|.macro get_errno // note trashes registers
+| call extern GetLastError
+| mov64 rcx, perr
+| mov dword [rcx], eax
+|.endmacro
+
+|.macro too_few_arguments
+| mov ax, 0
+| call_rp extern luaL_error, L_ARG, &"too few arguments"
+|.endmacro
+
+|.macro too_many_arguments
+| mov ax, 0
+| call_rp extern luaL_error, L_ARG, &"too many arguments"
+|.endmacro
+
+|.macro lua_return_arg
+| mov eax, 1
+| epilog
+|.endmacro
+
+|.macro lua_return_void
+| get_errno
+| mov eax, 0
+| epilog
+|.endmacro
+
+|.macro lua_return_double
+|.if X64
+| movq qword [rsp+32], xmm0
+|.else
+| fstp qword [rsp+4] // note get_errno doesn't require any stack on x86
+|.endif
+|
+| get_errno
+|
+|.if X64WIN
+| movq xmm1, qword [rsp+32]
+| mov rcx, L_ARG
+|.elif X64
+| movq xmm0, qword [rsp+32]
+| mov rdi, L_ARG
+|.else
+| mov [rsp], L_ARG
+|.endif
+| call extern lua_pushnumber
+| lua_return_arg
+|.endmacro
+
+|.macro lua_return_bool
+| movzx eax, al
+| mov [rsp+32], eax
+| get_errno
+| mov eax, [rsp+32]
+| call_rr extern lua_pushboolean, L_ARG, rax
+| lua_return_arg
+|.endmacro
+
+|.macro lua_return_int
+| mov [rsp+32], eax
+| get_errno
+| mov eax, [rsp+32]
+| call_rr extern push_int, L_ARG, rax
+| lua_return_arg
+|.endmacro
+
+|.macro lua_return_uint
+| mov [rsp+32], eax
+| get_errno
+| mov eax, [rsp+32]
+| call_rr extern push_uint, L_ARG, rax
+| lua_return_arg
+|.endmacro
+
+|.macro lua_return_long
+| mov [rsp+32], rax
+| get_errno
+| mov rax, [rsp+32]
+| call_rr extern lua_pushinteger, L_ARG, rax
+| lua_return_arg
+|.endmacro
+
+|.macro lua_return_ulong
+| mov [rsp+32], rax
+| get_errno
+| mov rax, [rsp+32]
+| call_rr extern lua_pushinteger, L_ARG, rax
+| lua_return_arg
+|.endmacro
+
+|.macro save_registers
+| // use rbp relative so we store values in the outer stack frame
+|.if X64WIN
+| // use the provided shadow space for int registers above prev rbp and
+| // return address
+| mov [rbp+16], rcx
+| mov [rbp+24], rdx
+| mov [rbp+32], r8
+| mov [rbp+40], r9
+| // use the extra space we added for float registers
+| // -16 to store underneath previous value of L_ARG
+| movq qword [rbp-16], xmm0
+| movq qword [rbp-24], xmm1
+| movq qword [rbp-32], xmm2
+| movq qword [rbp-40], xmm3
+|.elif X64
+| movq qword [rbp-16], xmm0
+| movq qword [rbp-24], xmm1
+| movq qword [rbp-32], xmm2
+| movq qword [rbp-40], xmm3
+| movq qword [rbp-48], xmm4
+| movq qword [rbp-56], xmm5
+| movq qword [rbp-64], xmm6
+| movq qword [rbp-72], xmm7
+| mov [rbp-80], rdi
+| mov [rbp-88], rsi
+| mov [rbp-96], rdx
+| mov [rbp-104], rcx
+| mov [rbp-112], r8
+| mov [rbp-120], r9
+|.else
+| // fastcall, -8 to store underneath previous value of L_ARG
+| mov [rbp-8], ecx
+| mov [rbp-12], edx
+|.endif
+|.endmacro
+
 #if defined _WIN64 || defined __amd64__
 #define JUMP_SIZE 14
 #else
@@ -224,154 +372,7 @@ void compile_globals(struct jit* jit, lua_State* L)
      * stack
      */
 
-    |.if X64
-    |.define L_ARG, r12
-    |.define TOP, r13
-    |.else
-    |.define L_ARG, rdi
-    |.define TOP, rsi
-    |.endif
 
-    |.macro epilog
-    |.if X64
-    | mov TOP, [rbp-16]
-    | mov L_ARG, [rbp-8]
-    |.else
-    | mov TOP, [rbp-8]
-    | mov L_ARG, [rbp-4]
-    |.endif
-    | mov rsp, rbp
-    | pop rbp
-    | ret
-    |.endmacro
-
-    |.macro get_errno // note trashes registers
-    | call extern GetLastError
-    | mov64 rcx, perr
-    | mov dword [rcx], eax
-    |.endmacro
-
-    /* the general idea for the return functions is:
-     * 1) Save return value on stack
-     * 2) Call get_errno (this trashes the registers hence #1)
-     * 3) Unpack return value from stack
-     * 4) Call lua push function
-     * 5) Set eax to number of returned args (0 or 1)
-     * 6) Call return which pops our stack frame
-     */
-
-    |->lua_return_arg:
-    | mov eax, 1
-    | epilog
-
-    |->lua_return_void:
-    | get_errno
-    | mov eax, 0
-    | epilog
-
-    |->lua_return_double:
-    |.if X64
-    | movq qword [rsp+32], xmm0
-    |.else
-    | fstp qword [rsp+4] // note get_errno doesn't require any stack on x86
-    |.endif
-    |
-    | get_errno
-    |
-    |.if X64WIN
-    | movq xmm1, qword [rsp+32]
-    | mov rcx, L_ARG
-    |.elif X64
-    | movq xmm0, qword [rsp+32]
-    | mov rdi, L_ARG
-    |.else
-    | mov [rsp], L_ARG
-    |.endif
-    | call extern lua_pushnumber
-    | jmp ->lua_return_arg
-
-    |->lua_return_bool:
-    | movzx eax, al
-    | mov [rsp+32], eax
-    | get_errno
-    | mov eax, [rsp+32]
-    | call_rr extern lua_pushboolean, L_ARG, rax
-    | jmp ->lua_return_arg
-
-    |->lua_return_int:
-    | mov [rsp+32], eax
-    | get_errno
-    | mov eax, [rsp+32]
-    | call_rr extern push_int, L_ARG, rax
-    | jmp ->lua_return_arg
-
-    |->lua_return_uint:
-    | mov [rsp+32], eax
-    | get_errno
-    | mov eax, [rsp+32]
-    | call_rr extern push_uint, L_ARG, rax
-    | jmp ->lua_return_arg
-
-#if LUA_VERSION_NUM == 503
-    |->lua_return_long:
-    | mov [rsp+32], rax
-    | get_errno
-    | mov rax, [rsp+32]
-    | call_rr extern lua_pushinteger, L_ARG, rax
-    | jmp ->lua_return_arg
-
-    |->lua_return_ulong:
-    | mov [rsp+32], rax
-    | get_errno
-    | mov rax, [rsp+32]
-    | call_rr extern lua_pushinteger, L_ARG, rax
-    | jmp ->lua_return_arg
-#endif
-
-    |->too_few_arguments:
-    | mov ax, 0
-    | call_rp extern luaL_error, L_ARG, &"too few arguments"
-
-    |->too_many_arguments:
-    | mov ax, 0
-    | call_rp extern luaL_error, L_ARG, &"too many arguments"
-
-    |->save_registers:
-    | // use rbp relative so we store values in the outer stack frame
-    |.if X64WIN
-    | // use the provided shadow space for int registers above prev rbp and
-    | // return address
-    | mov [rbp+16], rcx
-    | mov [rbp+24], rdx
-    | mov [rbp+32], r8
-    | mov [rbp+40], r9
-    | // use the extra space we added for float registers
-    | // -16 to store underneath previous value of L_ARG
-    | movq qword [rbp-16], xmm0
-    | movq qword [rbp-24], xmm1
-    | movq qword [rbp-32], xmm2
-    | movq qword [rbp-40], xmm3
-    |.elif X64
-    | movq qword [rbp-16], xmm0
-    | movq qword [rbp-24], xmm1
-    | movq qword [rbp-32], xmm2
-    | movq qword [rbp-40], xmm3
-    | movq qword [rbp-48], xmm4
-    | movq qword [rbp-56], xmm5
-    | movq qword [rbp-64], xmm6
-    | movq qword [rbp-72], xmm7
-    | mov [rbp-80], rdi
-    | mov [rbp-88], rsi
-    | mov [rbp-96], rdx
-    | mov [rbp-104], rcx
-    | mov [rbp-112], r8
-    | mov [rbp-120], r9
-    |.else
-    | // fastcall, -8 to store underneath previous value of L_ARG
-    | mov [rbp-8], ecx
-    | mov [rbp-12], edx
-    |.endif
-    | ret
 
     compile(Dst, L, NULL, LUA_NOREF);
 }
@@ -689,12 +690,12 @@ cfunction compile_callback(lua_State* L, int fidx, int ct_usr, const struct ctyp
     |.if X64
     | // 8 to realign, 16 for return vars, 32 for local calls, rest to save registers
     | sub rsp, 8 + 16 + 32 + REGISTER_STACK_SPACE(ct)
-    | call ->save_registers
+    | save_registers
     |.else
     | // 4 to realign, 16 for return vars, 32 for local calls, rest to save registers
     | sub rsp, 4 + 16 + 32 + REGISTER_STACK_SPACE(ct)
     if (ct->calling_convention == FAST_CALL) {
-        | call ->save_registers
+        | save_registers
     }
     |.endif
 
@@ -1088,11 +1089,18 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
     | call_r extern lua_gettop, L_ARG
     | mov TOP, rax // no need for movzxd rax, eax - high word guarenteed to be zero by x86-64
     | cmp rax, nargs
-    | jl ->too_few_arguments
-
     if (!ct->has_var_arg) {
-        | jg ->too_many_arguments
+        | jge >2
+        | too_few_arguments
+        | 2:
+        | jle >1
+        | too_many_arguments
+    } else {
+        | jge >1
+        | too_few_arguments
     }
+
+    | 1:
 
     /* no need to zero extend eax returned by lua_gettop to rax as x86-64
      * preguarentees that the upper 32 bits will be zero */
@@ -1452,7 +1460,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
         | call_rrp extern push_cdata, L_ARG, lua_upvalueindex(num_upvals), mbr_ct
         | mov rcx, [rsp+32]
         | mov [rax], rcx // *(void**) cdata = val
-        | jmp ->lua_return_arg
+        | lua_return_arg
 
     } else {
         switch (mbr_ct->type) {
@@ -1464,16 +1472,16 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             | call_rrp extern push_cdata, L_ARG, lua_upvalueindex(num_upvals), mbr_ct
             | mov rcx, [rsp+32]
             | mov [rax], rcx // *(cfunction**) cdata = val
-            | jmp ->lua_return_arg
+            | lua_return_arg
             break;
 
         case INT64_TYPE:
 #if LUA_VERSION_NUM == 503
             lua_pop(L, 1);
             if (mbr_ct->is_unsigned) {
-                | jmp ->lua_return_ulong
+                | lua_return_ulong
             } else {
-                | jmp ->lua_return_long
+                | lua_return_long
             }
 #else
             num_upvals++;
@@ -1499,7 +1507,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             | mov [rax], rdx
             |.endif
             |
-            | jmp ->lua_return_arg
+            | lua_return_arg
 #endif
             break;
 
@@ -1529,7 +1537,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             | mov [rax+4], ecx
             |.endif
             |
-            | jmp ->lua_return_arg
+            | lua_return_arg
             break;
 
         case COMPLEX_DOUBLE_TYPE:
@@ -1559,17 +1567,17 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             | get_errno
             |.endif
             |
-            | jmp ->lua_return_arg
+            | lua_return_arg
             break;
 
         case VOID_TYPE:
             lua_pop(L, 1);
-            | jmp ->lua_return_void
+            | lua_return_void
             break;
 
         case BOOL_TYPE:
             lua_pop(L, 1);
-            | jmp ->lua_return_bool
+            | lua_return_bool
             break;
 
         case INT8_TYPE:
@@ -1579,7 +1587,7 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             } else {
                 | movsx eax, al
             }
-            | jmp ->lua_return_int
+            | lua_return_int
             break;
 
         case INT16_TYPE:
@@ -1589,16 +1597,16 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             } else {
                 | movsx eax, ax
             }
-            | jmp ->lua_return_int
+            | lua_return_int
             break;
 
         case INT32_TYPE:
         case ENUM_TYPE:
             lua_pop(L, 1);
             if (mbr_ct->is_unsigned) {
-                | jmp ->lua_return_uint
+                | lua_return_uint
             } else {
-                | jmp ->lua_return_int
+                | lua_return_int
             }
             break;
 
@@ -1607,12 +1615,12 @@ void compile_function(lua_State* L, cfunction func, int ct_usr, const struct cty
             |.if X64
             | cvtss2sd xmm0, xmm0
             |.endif
-            | jmp ->lua_return_double
+            | lua_return_double
             break;
 
         case DOUBLE_TYPE:
             lua_pop(L, 1);
-            | jmp ->lua_return_double
+            | lua_return_double
             break;
 
         default:
