@@ -365,7 +365,7 @@ static void get_int(Dst_DECL, const struct ctype* ct, struct reg_alloc* reg, int
         reg->off += 8;
     } else {
         dasm_put(Dst, 1, reg->off);
-#ifdef __amd64__
+#if defined __amd64__ || defined _WIN64
 		/* The parameters to a function on stack are always 8 byte aligned. */
         reg->off += 8;
 #else
