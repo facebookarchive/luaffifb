@@ -925,6 +925,8 @@ void test_call_pppppiiiiii(void* p1, void* p2, void* p3, void* p4, void* p5, int
 void test_call_pppppffffff(void* p1, void* p2, void* p3, void* p4, void* p5, float f1, float f2, float f3, float f4, float f5, float f6);
 void test_call_pppppiifiii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, float f3, int i4, int i5, int i6);
 void test_call_pppppiiifii(void* p1, void* p2, void* p3, void* p4, void* p5, int i1, int i2, int i3, float i4, int i5, int i6);
+typedef int (*cb_t)(char i1, char i2, char i3, char i4, char i5, char i6, char i7, char i8, char i9, char i10);
+void test_callback_cccccccccc(cb_t func);
 ]]
 
 ffi.C.test_call_echo("input")
@@ -946,6 +948,15 @@ assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8.5 9 10 11")
 
 ffi.C.test_call_pppppiiifii(ptr(1), ptr(2), ptr(3), ptr(4), ptr(5), 6, 7, 8, 9.5, 10, 11)
 assert(ffi.C.buf == "0x1 0x2 0x3 0x4 0x5 6 7 8 9.5 10 11")
+
+
+local function callback(i1, i2, i3, i4, i5, i6, i7, i8, i9, i10)
+    local t = {i1, i2, i3, i4, i5, i6, i7, i8, i9, i10}
+    for i, v in ipairs(t) do
+        assert(i == v)
+    end
+end
+ffi.C.test_callback_cccccccccc(callback)
 
 local sum = ffi.C.add_dc(ffi.new('complex', 1, 2), ffi.new('complex', 3, 5))
 assert(ffi.istype('complex', sum))

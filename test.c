@@ -718,3 +718,10 @@ void test_call_pppppiiifii(void* p1, void* p2, void* p3, void* p4, void* p5, int
     sprintf(buf, "%p %p %p %p %p %d %d %d %0.1f %d %d", p1, p2, p3, p4, p5, i1, i2, i3, f4, i5, i6);
 }
 
+typedef int (*cb_t)(char i1, char i2, char i3, char i4, char i5, char i6, char i7, char i8, char i9, char i10);
+EXPORT void test_callback_cccccccccc(cb_t func);
+void test_callback_cccccccccc(cb_t func)
+{
+    func(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+}
+
