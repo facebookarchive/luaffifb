@@ -506,7 +506,12 @@ static void get_int(Dst_DECL, const struct ctype* ct, struct reg_alloc* reg, int
         reg->off += 8;
     } else {
         | mov ecx, [rbp + reg->off]
+#if defined __amd64__ || defined _WIN64
+		/* The parameters to a function on stack are always 8 byte aligned. */
+        reg->off += 8;
+#else
         reg->off += 4;
+#endif
     }
 }
 
