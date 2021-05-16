@@ -2298,7 +2298,15 @@ static int cdata_sub(lua_State* L)
     } else if (lt.pointers || rt.pointers) {                                \
         luaL_error(L, "can't operate on a pointer value");                  \
                                                                             \
-    } else {                                                                \
+    } else if (ct.is_unsigned) {                                            \
+        uint64_t res;                                                       \
+        uint64_t left = check_intptr(L, 1, lp, &lt);                        \
+        uint64_t right = check_intptr(L, 2, rp, &rt);                       \
+                                                                            \
+        DO_NORMAL(left, right, res);                                        \
+        push_number(L, res, ct_usr, &ct);                                   \
+    }                                                                       \
+    else {                                                                  \
         int64_t res;                                                        \
         int64_t left = check_intptr(L, 1, lp, &lt);                         \
         int64_t right = check_intptr(L, 2, rp, &rt);                        \
